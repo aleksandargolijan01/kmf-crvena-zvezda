@@ -1,0 +1,32 @@
+{
+  "name": "kmf-crvena-zvezda-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --host 127.0.0.1 --port 4200",
+    "build": "ng build",
+    "build:production": "ng build && node tools/generate-static-seo.mjs",
+    "watch": "ng build --watch --configuration development",
+    "generate:sitemap": "node tools/generate-sitemap.mjs",
+    "test:seo": "node --test tools/static-news-seo.test.mjs"
+  },
+  "dependencies": {
+    "@angular/common": "^21.2.17",
+    "@angular/compiler": "^21.2.17",
+    "@angular/core": "^21.2.17",
+    "@angular/forms": "^21.2.17",
+    "@angular/platform-browser": "^21.2.17",
+    "@angular/router": "^21.2.17",
+    "rxjs": "~7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "~0.16.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.2.17",
+    "@angular/cli": "^21.2.17",
+    "@angular/compiler-cli": "^21.2.17",
+    "@types/node": "^25.8.0",
+    "typescript": "~5.9.3"
+  }
+}

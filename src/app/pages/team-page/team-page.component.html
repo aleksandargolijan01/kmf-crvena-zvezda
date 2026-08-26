@@ -1,0 +1,59 @@
+<main>
+  <section class="page-hero team-page-hero section-dark">
+    <div>
+      <p class="eyebrow">{{ i18n.t('team.hero.eyebrow') }}</p>
+      <h1>{{ i18n.t('team.hero.title') }}</h1>
+      <p>{{ i18n.t('team.hero.text') }}</p>
+    </div>
+    <aside class="page-hero-card">
+      <span>{{ i18n.t('team.hero.cardLabel') }}</span>
+      <strong>{{ players().length }}</strong>
+      <small>{{ i18n.t('team.hero.cardText') }}</small>
+    </aside>
+  </section>
+
+  <section class="section roster-section">
+    <div class="section-heading">
+      <p class="eyebrow">{{ i18n.t('team.players.eyebrow') }}</p>
+      <h2>{{ i18n.t('team.players.title') }}</h2>
+    </div>
+
+    <div class="premium-card-grid player-grid">
+      @for (player of players(); track player.name) {
+        <article class="player-card premium-dark-card">
+          <img appImageFallback [src]="player.image" [alt]="player.name" width="480" height="560" loading="lazy" decoding="async" />
+          <div>
+            <span class="jersey-number">#{{ player.number }}</span>
+            <p class="role">{{ i18n.text(player.position) }}</p>
+            <h3>{{ player.name }}</h3>
+            <p>{{ i18n.text(player.description) }}</p>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state">Тренутно нема играча за приказ.</div>
+      }
+    </div>
+  </section>
+
+  @if (staff().length) {
+    <section class="section staff-section">
+      <div class="section-heading">
+        <p class="eyebrow">{{ i18n.t('team.staff.eyebrow') }}</p>
+        <h2>{{ i18n.t('team.staff.title') }}</h2>
+      </div>
+
+      <div class="premium-card-grid staff-grid">
+        @for (member of staff(); track member.name) {
+          <article class="staff-card premium-dark-card">
+            <img appImageFallback [src]="member.image" [alt]="member.name" width="480" height="560" loading="lazy" decoding="async" />
+            <div>
+              <p class="role">{{ i18n.text(member.role) }}</p>
+              <h3>{{ member.name }}</h3>
+              <p>{{ i18n.text(member.description) }}</p>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  }
+</main>

@@ -1,0 +1,37 @@
+<main>
+  <section class="page-hero leadership-page-hero section-dark">
+    <div>
+      <p class="eyebrow">{{ i18n.t('leadership.hero.eyebrow') }}</p>
+      <h1>{{ i18n.t('leadership.hero.title') }}</h1>
+      <p>{{ i18n.t('leadership.hero.text') }}</p>
+      <a class="btn btn-primary" routerLink="/" fragment="kontakt">{{ i18n.t('leadership.hero.cta') }}</a>
+    </div>
+    <aside class="page-hero-card">
+      <span>{{ i18n.t('leadership.hero.cardLabel') }}</span>
+      <strong>{{ memberCountLabel() }}</strong>
+      <small>{{ i18n.t('leadership.hero.cardText') }}</small>
+    </aside>
+  </section>
+
+  <section class="section leadership-directory">
+    <div class="section-heading centered">
+      <p class="eyebrow">{{ i18n.t('leadership.section.eyebrow') }}</p>
+      <h2>{{ i18n.t('leadership.section.title') }}</h2>
+    </div>
+
+    <div class="card-grid leadership-page-grid">
+      @for (leader of leadership(); track leader.name) {
+        <article class="person-card glow-card">
+          <img appImageFallback [src]="leader.image" [alt]="leader.name" width="480" height="560" loading="lazy" decoding="async" />
+          <div>
+            <p class="role">{{ i18n.text(leader.role) }}</p>
+            <h3>{{ leader.name }}</h3>
+            <p>{{ i18n.text(leader.description) }}</p>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state">Тренутно нема чланова управе за приказ.</div>
+      }
+    </div>
+  </section>
+</main>

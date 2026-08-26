@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">KMF Crvena Zvezda social preview</title>
+  <desc id="desc">Default share image for KMF Crvena Zvezda public website.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#111216"/>
+      <stop offset="0.52" stop-color="#540007"/>
+      <stop offset="1" stop-color="#d50012"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="72%" cy="20%" r="62%">
+      <stop offset="0" stop-color="#ff4b5a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff4b5a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <path d="M0 505c190-86 330-112 500-72 245 58 386 18 700-116v313H0Z" fill="#ffffff" opacity="0.08"/>
+  <path d="M96 82h1008v466H96Z" fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="2"/>
+  <image href="/images/logo-kmf-crvena-zvezda.png" x="96" y="145" width="170" height="170" preserveAspectRatio="xMidYMid meet"/>
+  <text x="300" y="195" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="900" letter-spacing="0">
+    KMF CRVENA ZVEZDA
+  </text>
+  <text x="300" y="255" fill="#fff" fill-opacity="0.82" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700">
+    Klub malog fudbala
+  </text>
+  <text x="96" y="430" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="950" letter-spacing="0">
+    Jedna zvezda.
+  </text>
+  <text x="96" y="505" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="950" letter-spacing="0">
+    Jedna porodica.
+  </text>
+  <text x="96" y="570" fill="#fff" fill-opacity="0.72" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">
+    kmfcrvenazvezda.rs
+  </text>
+</svg>

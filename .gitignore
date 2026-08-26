@@ -1,0 +1,65 @@
+# Secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+.angular/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.eslintcache
+
+# Logs
+*.log
+logs/
+
+# Test reports
+test-results/
+playwright-report/
+
+# Temporary and cache files
+.cache/
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+*.pid
+
+# Local tooling
+.agents/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Backups
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# Local databases and dumps
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+*.dump.gz
+
+# Generated Prisma client (migrations remain tracked)
+/src/generated/prisma

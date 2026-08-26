@@ -1,0 +1,35 @@
+<main>
+  <section class="page-hero news-page-hero section-dark">
+    <div>
+      <p class="eyebrow">{{ i18n.t('news.hero.eyebrow') }}</p>
+      <h1>{{ i18n.t('news.hero.title') }}</h1>
+      <p>{{ i18n.t('news.hero.text') }}</p>
+    </div>
+    <aside class="page-hero-card">
+      <span>{{ i18n.t('news.hero.cardLabel') }}</span>
+      <strong>{{ newsState().total }}</strong>
+      <small>{{ i18n.t('news.hero.cardText') }}</small>
+    </aside>
+  </section>
+
+  <section class="section news-directory">
+    <div class="section-heading">
+      <p class="eyebrow">{{ i18n.t('news.section.eyebrow') }}</p>
+      <h2>{{ i18n.t('news.section.title') }}</h2>
+    </div>
+
+    @if (newsState().loading) {
+      <div class="public-state">Ucitavanje vesti...</div>
+    } @else if (newsState().error) {
+      <div class="public-state public-state-error">Vesti trenutno nisu dostupne.</div>
+    } @else if (!newsState().items.length) {
+      <div class="public-state">Nema objavljenih vesti.</div>
+    } @else {
+      <div class="news-card-grid">
+        @for (item of newsState().items; track item.slug) {
+          <app-news-card [item]="item" />
+        }
+      </div>
+    }
+  </section>
+</main>

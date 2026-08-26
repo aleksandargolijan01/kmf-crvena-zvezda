@@ -1,0 +1,51 @@
+<main>
+  <section class="page-hero section-dark">
+    <div>
+      <p class="eyebrow">{{ i18n.t('friends.hero.eyebrow') }}</p>
+      <h1>{{ i18n.t('friends.hero.title') }}</h1>
+      <p>{{ i18n.t('friends.hero.text') }}</p>
+      <a class="btn btn-primary" routerLink="/prijatelji-kluba" fragment="sponsor-form">{{ i18n.t('friends.hero.cta') }}</a>
+    </div>
+    <div class="page-hero-cards" [attr.aria-label]="i18n.t('friends.partnersDataAria')">
+      <aside class="page-hero-card">
+        <span>{{ i18n.t('friends.hero.packageLabel') }}</span>
+        <strong>{{ i18n.t('friends.hero.packageValue') }}</strong>
+        <small>{{ i18n.t('friends.hero.packageText') }}</small>
+      </aside>
+      <aside class="page-hero-card">
+        <span>{{ i18n.t('friends.hero.supportLabel') }}</span>
+        <strong>{{ sponsorsCount() }}</strong>
+        <small>{{ i18n.t('friends.hero.supportText') }}</small>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section sponsor-packages">
+    @if (sponsorsState().loading) {
+      <div class="public-state">Учитавање спонзора...</div>
+    } @else if (sponsorsState().error) {
+      <div class="public-state public-state-error">Спонзори тренутно нису доступни.</div>
+    } @else if (!sponsorsState().categories.length) {
+      <div class="public-state">Тренутно нема активних спонзора за приказ.</div>
+    } @else {
+    @for (category of sponsorsState().categories; track category.id) {
+      <article class="package-block glow-card">
+        <div class="package-copy">
+          <p class="eyebrow">{{ i18n.t('friends.package.eyebrow') }}</p>
+          <h2>{{ categoryTitle(category) }}</h2>
+          <p>{{ categoryDescription(category) }}</p>
+        </div>
+        <div class="logo-grid">
+          @for (sponsor of category.sponsors; track sponsor.id) {
+            <app-sponsor-logo [name]="sponsor.name" [logoUrl]="sponsor.logoUrl" [href]="sponsor.websiteUrl" [dark]="true" />
+          }
+        </div>
+      </article>
+    }
+    }
+  </section>
+
+  <section class="section sponsor-inquiry-section">
+    <app-sponsor-inquiry-form />
+  </section>
+</main>

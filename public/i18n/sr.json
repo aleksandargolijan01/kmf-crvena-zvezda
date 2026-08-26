@@ -1,0 +1,4 @@
+{
+  "language": "sr",
+  "note": "Glavni izvor prevoda je src/app/i18n/translations.ts. Ovaj fajl je pripremljen kao javni JSON katalog za kasnije CMS/API učitavanje."
+}

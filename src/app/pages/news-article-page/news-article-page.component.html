@@ -1,0 +1,86 @@
+<main>
+  @if (loading()) {
+    <section class="page-hero news-page-hero section-dark not-found-hero">
+      <div>
+        <p class="eyebrow">{{ i18n.t('news.hero.title') }}</p>
+        <h1>Ucitavanje vesti...</h1>
+      </div>
+    </section>
+  } @else if (article) {
+    <article class="article-page">
+      <section class="article-hero section-dark" [style.background-image]="'linear-gradient(90deg, rgba(12, 0, 2, 0.96), rgba(104, 0, 10, 0.78)), url(' + articleImage(article) + ')'">
+        <div class="article-hero-content">
+          <div class="article-meta">
+            <span>{{ i18n.text(article.category) }}</span>
+            <time>{{ article.date }}</time>
+          </div>
+          <h1>{{ i18n.text(article.title) }}</h1>
+          <p>{{ i18n.text(article.excerpt) }}</p>
+          <a class="btn btn-primary" routerLink="/vesti">{{ i18n.t('common.backToNews') }}</a>
+        </div>
+      </section>
+
+      <section class="section article-body-section">
+        <div class="article-shell">
+          <aside class="article-side-card">
+            <span>{{ i18n.t('news.article.sideLabel') }}</span>
+            <strong>{{ i18n.t('news.article.sideTitle') }}</strong>
+            <small>{{ i18n.t('news.article.sideText') }}</small>
+          </aside>
+
+          <div class="article-content">
+            <figure class="article-cover">
+              <img
+                appImageFallback
+                [src]="articleImage(article)"
+                [alt]="i18n.text(article.title)"
+                width="1600"
+                height="900"
+                decoding="async"
+                fetchpriority="high"
+              />
+            </figure>
+
+            <p class="article-lead">{{ i18n.text(article.excerpt) }}</p>
+
+            @for (paragraph of article.fullContent; track paragraph) {
+              <div class="article-content-block" [innerHTML]="i18n.text(paragraph)"></div>
+            }
+
+            @if (article.galleryImages.length) {
+              <div class="article-gallery">
+                @for (image of article.galleryImages; track image.src) {
+                  <figure>
+                    <img appImageFallback [src]="image.src" [alt]="i18n.text(image.alt)" width="1600" height="1066" loading="lazy" decoding="async" />
+                  </figure>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="section related-news-section">
+        <div class="section-heading">
+          <p class="eyebrow">{{ i18n.t('news.related.eyebrow') }}</p>
+          <h2>{{ i18n.t('news.related.title') }}</h2>
+        </div>
+
+        <div class="news-card-grid">
+          @for (item of relatedNews; track item.slug) {
+            <app-news-card [item]="item" />
+          }
+        </div>
+      </section>
+    </article>
+  } @else {
+    <section class="page-hero news-page-hero section-dark not-found-hero">
+      <div>
+        <p class="eyebrow">{{ i18n.t('news.hero.title') }}</p>
+        <h1>{{ error() ? 'Vesti trenutno nisu dostupne.' : i18n.t('common.notFoundTitle') }}</h1>
+        <p>{{ error() ? 'Pokusajte ponovo kasnije ili se vratite na pregled svih vesti.' : i18n.t('common.notFoundText') }}</p>
+        <a class="btn btn-primary" routerLink="/vesti">{{ i18n.t('common.backToNews') }}</a>
+      </div>
+    </section>
+  }
+</main>

@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+}
+
+enum MediaFileType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  OTHER
+}
+
+enum StaffTeamType {
+  FIRST_TEAM
+  U19_TEAM
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  refreshTokenHash String?
+  firstName        String?
+  lastName         String?
+  role             UserRole @default(EDITOR)
+  isActive         Boolean  @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  news News[]
+  mediaFiles MediaFile[]
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model News {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title_sr    String
+  title_en    String?
+  title_ru    String?
+  excerpt_sr  String?
+  excerpt_en  String?
+  excerpt_ru  String?
+  content_sr  String
+  content_en  String?
+  content_ru  String?
+  coverImage  String?
+  coverImageId String?
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+  featured    Boolean  @default(false)
+  authorId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author     User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  coverMedia MediaFile? @relation(fields: [coverImageId], references: [id], onDelete: SetNull)
+
+  @@index([published, publishedAt])
+  @@index([featured, publishedAt])
+  @@index([authorId])
+  @@index([coverImageId])
+}
+
+model Player {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  fullName    String
+  slug        String   @unique
+  position    String?
+  shirtNumber Int?
+  bio_sr      String?
+  bio_en      String?
+  bio_ru      String?
+  imageUrl    String?
+  imageId     String?
+  active      Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  image MediaFile? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([imageId])
+  @@index([active, order])
+}
+
+model U19Player {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  fullName    String
+  slug        String   @unique
+  position    String?
+  shirtNumber Int?
+  bio_sr      String?
+  bio_en      String?
+  bio_ru      String?
+  imageUrl    String?
+  imageId     String?
+  active      Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  image MediaFile? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([imageId])
+  @@index([active, order])
+}
+
+model ManagementMember {
+  id        String   @id @default(cuid())
+  fullName  String
+  slug      String   @unique
+  role_sr   String
+  role_en   String?
+  role_ru   String?
+  bio_sr    String?
+  bio_en    String?
+  bio_ru    String?
+  imageUrl  String?
+  imageId   String?
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image MediaFile? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([imageId])
+  @@index([active, order])
+}
+
+model BoardMember {
+  id        String   @id @default(cuid())
+  fullName  String
+  slug      String   @unique
+  role_sr   String   @default("Члан управног одбора")
+  role_en   String?
+  role_ru   String?
+  bio_sr    String?
+  bio_en    String?
+  bio_ru    String?
+  imageUrl  String?
+  imageId   String?
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image MediaFile? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([imageId])
+  @@index([active, order])
+}
+
+model StaffMember {
+  id        String        @id @default(cuid())
+  fullName  String
+  role_sr   String
+  role_en   String?
+  role_ru   String?
+  bio_sr    String?
+  bio_en    String?
+  bio_ru    String?
+  imageUrl  String?
+  imageId   String?
+  teamType  StaffTeamType
+  active    Boolean       @default(true)
+  order     Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  image MediaFile? @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  @@index([imageId])
+  @@index([teamType, active, order])
+}
+
+model SponsorCategory {
+  id             String    @id @default(cuid())
+  name_sr        String
+  name_en        String?
+  name_ru        String?
+  slug           String    @unique
+  description_sr String?
+  description_en String?
+  description_ru String?
+  order          Int       @default(0)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sponsors Sponsor[]
+
+  @@index([active, order])
+}
+
+model Sponsor {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  websiteUrl     String?
+  logoUrl        String?
+  logoId         String?
+  categoryId     String?
+  description_sr String?
+  description_en String?
+  description_ru String?
+  featured       Boolean  @default(false)
+  active         Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category SponsorCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  logo     MediaFile?       @relation(fields: [logoId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([logoId])
+  @@index([featured])
+  @@index([active, order])
+}
+
+model NewsletterSubscriber {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  firstName        String?
+  lastName         String?
+  phone            String?
+  source           String?
+  consent          Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  unsubscribeToken String    @unique
+  consentGivenAt   DateTime?
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([source])
+  @@index([unsubscribedAt])
+}
+
+model MediaFile {
+  id             String        @id @default(cuid())
+  bucket         String
+  storagePath    String        @unique
+  url            String
+  originalName   String
+  fileName       String
+  mimeType       String
+  size           Int
+  type           MediaFileType @default(IMAGE)
+  altText        String?
+  uploadedById   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  uploadedBy User?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  newsCover  News[]
+  playerImages Player[]
+  u19PlayerImages U19Player[]
+  managementImages ManagementMember[]
+  boardImages BoardMember[]
+  staffImages StaffMember[]
+  sponsorLogos Sponsor[]
+
+  @@index([type])
+  @@index([uploadedById])
+}
