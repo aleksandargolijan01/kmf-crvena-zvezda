@@ -8,7 +8,6 @@ export const STATIC_ROUTES = [
   { path: '/uprava', changefreq: 'monthly', priority: '0.7' },
   { path: '/upravni-odbor', changefreq: 'monthly', priority: '0.7' },
   { path: '/prijatelji-kluba', changefreq: 'weekly', priority: '0.8' },
-  { path: '/kontakt', changefreq: 'monthly', priority: '0.6' },
   { path: '/vesti', changefreq: 'daily', priority: '0.9' },
 ];
 
@@ -42,7 +41,7 @@ export async function fetchPublishedNews(apiBaseUrl, fetchImpl = fetch) {
   do {
     const url = new URL(`${baseUrl.pathname.replace(/\/$/, '')}/news`, baseUrl.origin);
     url.searchParams.set('page', String(page));
-    url.searchParams.set('limit', '100');
+    url.searchParams.set('limit', '50');
 
     const response = await fetchImpl(url, {
       headers: { accept: 'application/json' },

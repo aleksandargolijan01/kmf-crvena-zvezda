@@ -1,21 +1,10 @@
 import { writeFile } from 'node:fs/promises';
 import { createSitemapXml, fetchPublishedNews } from './static-news-seo.mjs';
+import { appendShopSitemap, fetchActiveProducts } from './static-shop-seo.mjs';
 
-const siteUrl = requiredEnv('PUBLIC_SITE_URL');
-const apiBaseUrl = process.env.API_BASE_URL || process.env.API_URL;
+const siteUrl = process.env.PUBLIC_SITE_URL || 'https://kmfcrvenazvezda.rs';
+const apiBaseUrl = process.env.API_BASE_URL || process.env.API_URL || 'https://api.kmfcrvenazvezda.rs';
 
-if (!apiBaseUrl) {
-  throw new Error('API_BASE_URL is required to generate a fresh production sitemap.');
-}
-
-const newsItems = await fetchPublishedNews(apiBaseUrl);
-await writeFile('public/sitemap.xml', createSitemapXml(newsItems, siteUrl), 'utf8');
-console.log(`Generated sitemap with ${newsItems.length} published news routes.`);
-
-function requiredEnv(name) {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`${name} is required to generate a fresh production sitemap.`);
-  }
-  return value;
-}
+const [newsItems, products] = await Promise.all([fetchPublishedNews(apiBaseUrl), fetchActiveProducts(apiBaseUrl)]);
+await writeFile('public/sitemap.xml', appendShopSitemap(createSitemapXml(newsItems, siteUrl), products, siteUrl), 'utf8');
+console.log(`Generated sitemap with ${newsItems.length} published news routes, Shop catalog and ${products.length} active product routes.`);

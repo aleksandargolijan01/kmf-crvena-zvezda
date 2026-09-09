@@ -12,7 +12,7 @@ import {
 
 const options = {
   siteUrl: 'https://kmfcrvenazvezda.rs',
-  siteName: 'KMF Crvena Zvezda',
+  siteName: 'KMF Crvena zvezda',
   defaultImage: '/images/social-share-default.png',
   publisherLogo: '/images/logo-kmf-crvena-zvezda.png',
 };

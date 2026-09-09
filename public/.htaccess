@@ -1,20 +1,63 @@
-# Angular SPA rules for Apache and LiteSpeed hosting at the domain root.
+# Angular prerender / SPA rules for Apache and LiteSpeed hosting at the domain root.
+
+ErrorDocument 404 /404/index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Keep cPanel/AutoSSL challenges and real files or directories out of the SPA fallback.
+  # Force one canonical hostname: www -> non-www.
+  RewriteCond %{HTTP_HOST} ^www\.kmfcrvenazvezda\.rs$ [NC]
+  RewriteRule ^ https://kmfcrvenazvezda.rs%{REQUEST_URI} [R=301,L]
+
+  # Keep cPanel/AutoSSL challenges out of routing rules.
   RewriteRule ^\.well-known(?:/|$) - [L]
+
+  # /404 itself and every unknown public route must have a real HTTP 404 status.
+  RewriteRule ^404/?$ - [R=404,L]
+
+  # Serve prerendered route files without redirecting canonical URLs to a trailing slash.
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.+?)/?$ $1/index.html [L]
+
+  # Keep real files and directories out of the SPA fallback.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # Angular handles every remaining route client-side.
-  RewriteRule ^ /index.html [L]
+  # Admin remains a client-side Angular application.
+  RewriteRule ^admin(?:/.*)?$ /index.html [L]
+
+  # Newly published articles that have not yet been prerendered
+  # remain directly accessible until the next frontend build.
+  RewriteRule ^vesti/[^/]+/?$ /index.html [L]
+
+  # Only known Shop pages and one product slug get an SPA fallback.
+  # Existing prerender files win above; new products work until the next build.
+  # Missing product files cannot be classified by static Apache: keep them out
+  # of the index until an active product is included in a subsequent build.
+  RewriteRule ^prodavnica/[a-z0-9]+(?:-[a-z0-9]+)*/?$ - [E=KMF_PRODUCT_FALLBACK:1]
+  RewriteRule ^prodavnica(?:/[a-z0-9]+(?:-[a-z0-9]+)*)?/?$ /index.html [L]
+  RewriteRule ^(?:korpa|porudzbina(?:/uspesno)?)/?$ /index.html [L]
+
+  # All other missing public routes are real HTTP 404 responses.
+  RewriteRule ^ - [R=404,L]
+</IfModule>
+
+<IfModule mod_setenvif.c>
+  SetEnvIf Request_URI "^/admin(?:/|$)" KMF_NOINDEX=1
+  SetEnvIf Request_URI "^/(?:korpa|porudzbina(?:/uspesno)?)(?:/|$)" KMF_NOINDEX=1
 </IfModule>
 
 <IfModule mod_headers.c>
+  # The admin area is also protected from indexing at HTTP-header level.
+  Header always set X-Robots-Tag "noindex, nofollow" env=KMF_NOINDEX
+  # Preserve the header through internal index.html/ErrorDocument rewrites.
+  Header always set X-Robots-Tag "noindex, nofollow" env=REDIRECT_KMF_NOINDEX
+  Header always set X-Robots-Tag "noindex, nofollow" env=KMF_PRODUCT_FALLBACK
+  Header always set X-Robots-Tag "noindex, nofollow" env=REDIRECT_KMF_PRODUCT_FALLBACK
+
   # Angular production bundles are content-hashed and safe to cache permanently.
   <FilesMatch "(?i)-[a-z0-9]{8,}\.(?:js|css)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
@@ -29,14 +72,13 @@
     Header set Cache-Control "public, max-age=3600, must-revalidate"
   </FilesMatch>
 
-  # Always revalidate the app shell so it references the newest hashed bundles.
+  # Always revalidate every prerendered shell so it references current bundles/content.
   <Files "index.html">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires "0"
   </Files>
 
-  # These files must never be stale if Angular service worker support is enabled later.
   <FilesMatch "^(?:ngsw\.json|ngsw-worker\.js|safety-worker\.js|worker-basic\.min\.js)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"

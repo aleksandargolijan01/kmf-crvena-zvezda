@@ -1,0 +1,54 @@
+<main lang="sr-Cyrl">
+  <header class="section shop-hero"><p class="eyebrow">ЗВАНИЧНА КОЛЕКЦИЈА</p><a routerLink="/prodavnica">← ПРОДАВНИЦА</a></header>
+  <section class="section shop-content">
+    @if (loading()) { <h1 class="shop-state" role="status">Учитавање производа…</h1> }
+    @else if (missing()) { <div class="shop-state"><h1>ПРОИЗВОД НИЈЕ ПРОНАЂЕН</h1><p>Производ више није у понуди или адреса није исправна.</p><a class="btn btn-primary" routerLink="/prodavnica">ПОГЛЕДАЈ ПРОДАВНИЦУ</a></div> }
+    @else if (error()) { <div class="shop-state" role="alert"><h1>ПРОИЗВОД НИЈЕ УЧИТАН</h1><p>Покушајте поново за неколико тренутака.</p><button class="btn btn-primary" (click)="retryRequest.next()">ПОКУШАЈ ПОНОВО</button></div> }
+    @else if (product(); as item) {
+      <div class="shop-layout">
+        <div>
+          <div class="shop-gallery" #gallery tabindex="0" aria-label="Фотографије производа" (scroll)="galleryScrolled()">
+            @for (image of images(); track image.url; let index = $index) {
+              <figure><img appImageFallback [src]="image.url" [alt]="image.alt" width="800" height="1000" [loading]="index === 0 ? 'eager' : 'lazy'" decoding="async" /></figure>
+            }
+          </div>
+          @if (images().length > 1) {
+            <div class="shop-thumbs" role="group" aria-label="Изаберите фотографију">
+              @for (image of images(); track image.url; let index = $index) {
+                <button type="button" [attr.aria-label]="'Прикажи фотографију ' + (index + 1)" [attr.aria-pressed]="activeImage() === index" (click)="selectImage(index)"><img appImageFallback [src]="image.url" alt="" width="74" height="93" loading="lazy" /></button>
+              }
+            </div>
+          }
+        </div>
+        <div class="shop-info">
+          <p class="eyebrow">ЗВАНИЧНА КОЛЕКЦИЈА</p><h1>{{ item.name.sr }}</h1>
+          <p class="shop-price">{{ money(item.priceMinor) }} @if (item.compareAtPriceMinor) { <del>{{ money(item.compareAtPriceMinor) }}</del> }</p>
+          <p>Власници сезонских карата остварују 20% попуста.</p>
+          <a class="shop-muted" href="#opis-proizvoda">Опис производа ↓</a>
+          @if (item.availability === 'SOLD_OUT') { <p class="shop-error">РАСПРОДАТО</p> }
+          @else if (item.availability === 'MADE_TO_ORDER') { <p>Израда по поруџбини.</p> }
+          <div class="shop-field"><p id="size-label">ИЗАБЕРИТЕ ВЕЛИЧИНУ</p>
+            <div class="shop-sizes" role="group" aria-labelledby="size-label" aria-describedby="size-validation">
+              @for (variant of item.variants; track variant.id) {
+                <button type="button" [disabled]="!variant.available || item.availability === 'SOLD_OUT'" [attr.aria-pressed]="selectedVariant() === variant.id" [attr.aria-label]="variant.size + (!variant.available ? ' — Распродато' : '')" (click)="selectedVariant.set(variant.id); validation.set('')">{{ variant.size }}</button>
+              }
+            </div>
+            @if (!item.variants.length) { <p>Тренутно нема доступних величина.</p> }
+            <p id="size-validation" role="alert">{{ validation() }}</p>
+          </div>
+          <div class="shop-field"><p>КОЛИЧИНА</p><app-quantity-selector [value]="quantity()" [disabled]="!item.availableForOrder" (quantityChange)="quantity.set($event)" /></div>
+          <button type="button" class="btn btn-primary shop-buy" [disabled]="!item.availableForOrder" (click)="add()">ДОДАЈ У КОРПУ</button>
+          @if (!item.availableForOrder && item.availability !== 'SOLD_OUT') { <p>Све величине су тренутно недоступне.</p> }
+          <p><a routerLink="/korpa">ПОГЛЕДАЈ КОРПУ →</a></p>
+          <dl class="shop-facts">
+            <div><dt>ПЛАЋАЊЕ</dt><dd>Плаћање поузећем приликом преузимања.</dd></div>
+            <div><dt>ДОСТАВА</dt><dd>Достава је доступна на територији Србије. Трошак доставе обрачунава се накнадно.</dd></div>
+            <div><dt>СЕЗОНСКА КАРТА</dt><dd>Власници важећих сезонских карата остварују 20% попуста на целу понуду.</dd></div>
+          </dl>
+        </div>
+      </div>
+      <section class="shop-description" id="opis-proizvoda"><h2>О ПРОИЗВОДУ</h2><div class="shop-description-content" [innerHTML]="item.description.sr"></div></section>
+    }
+  </section>
+  <div aria-live="polite" aria-atomic="true">@if (toasts.messages$ | async; as messages) { @if (messages.length) { <div class="shop-confirmation"><button type="button" aria-label="Затвори потврду" (click)="toasts.dismiss(messages[messages.length - 1].id)">{{ messages[messages.length - 1].text }} ×</button></div> } }</div>
+</main>

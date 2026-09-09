@@ -1,0 +1,157 @@
+// Optional isolated browser check. External Playwright is supplied via an absolute
+// module path; no production credentials, app dependency changes or live APIs.
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { readFile, stat, mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const require = createRequire(path.join(root, 'backend/package.json'));
+const databaseUrl = process.env.SHOP_TEST_DATABASE_URL;
+const url = new URL(databaseUrl ?? 'http://invalid');
+if (!['127.0.0.1', 'localhost'].includes(url.hostname) || url.pathname !== '/shop_phase1_test') throw new Error('A disposable local shop_phase1_test database is required.');
+if (!process.env.SHOP_PLAYWRIGHT_MODULE) throw new Error('Set SHOP_PLAYWRIGHT_MODULE to an external Playwright entry point.');
+const { chromium } = await import(pathToFileURL(process.env.SHOP_PLAYWRIGHT_MODULE).href);
+const { PrismaClient } = require('@prisma/client');
+const { Test } = require('@nestjs/testing');
+const { ValidationPipe } = require('@nestjs/common');
+const { JwtService } = require('@nestjs/jwt');
+const { ConfigService } = require('@nestjs/config');
+const { PrismaService } = require('./dist/src/database/prisma.service.js');
+const { ProductsService } = require('./dist/src/modules/shop/products.service.js');
+const { AdminProductsController } = require('./dist/src/modules/shop/admin-products.controller.js');
+const { JwtAuthGuard } = require('./dist/src/modules/auth/guards/jwt-auth.guard.js');
+const { RolesGuard } = require('./dist/src/modules/auth/guards/roles.guard.js');
+const db = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+const secret = 'local-browser-shop-test-only-secret';
+const jwt = new JwtService({ secret });
+const module = await Test.createTestingModule({
+  controllers: [AdminProductsController], providers: [JwtAuthGuard, RolesGuard,
+    { provide: ProductsService, useValue: new ProductsService(db) },
+    { provide: PrismaService, useValue: { user: { findUnique: ({ where }) => ({ id: where.id, role: where.id, isActive: true }) } } },
+    { provide: JwtService, useValue: jwt }, { provide: ConfigService, useValue: { getOrThrow: () => secret } }
+  ]
+}).compile();
+const api = module.createNestApplication();
+api.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+await api.listen(0, '127.0.0.1');
+const apiBase = await api.getUrl();
+const output = path.join(root, 'dist/kmf-crvena-zvezda-site/browser');
+const types = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const server = createServer(async (request, response) => {
+  try {
+    const relative = decodeURIComponent(new URL(request.url, 'http://localhost').pathname).replace(/^\/+/, '');
+    let file = path.resolve(output, relative);
+    if (!file.startsWith(output + path.sep) && file !== output) { response.writeHead(403).end(); return; }
+    if (relative.startsWith('admin') || !(await stat(file).catch(() => null))?.isFile()) file = path.join(output, 'index.html');
+    response.setHeader('Content-Type', types[path.extname(file)] ?? 'application/octet-stream');
+    response.end(await readFile(file));
+  } catch { response.writeHead(500).end(); }
+});
+await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+const base = `http://127.0.0.1:${server.address().port}`;
+let browser;
+let testPage;
+const browserErrors = [];
+try {
+  browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  context.setDefaultTimeout(15000);
+  // All external calls are intercepted before they can leave the test browser.
+  await context.route('**/*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.origin === base) return route.continue();
+    if (requestUrl.pathname.startsWith('/admin/shop/products')) {
+      const result = await route.fetch({ url: `${apiBase}${requestUrl.pathname}${requestUrl.search}` });
+      return route.fulfill({ response: result });
+    }
+    if (requestUrl.pathname === '/admin/media') {
+      return route.fulfill({ json: { data: [{ id: media.id, url: `${base}/images/logo-kmf-crvena-zvezda.png`, originalName: 'Тест фотографија', fileName: 'test.png', mimeType: 'image/png', size: 100 }], meta: { page: 1, limit: 12, total: 1, totalPages: 1 } } });
+    }
+    return route.fulfill({ json: { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } } });
+  });
+  await context.addInitScript(({ token }) => {
+    localStorage.setItem('kmf_admin_access_token', token);
+    localStorage.setItem('kmf_admin_user', JSON.stringify({ id: 'ADMIN', email: 'test@example.invalid', role: 'ADMIN', firstName: 'Тест' }));
+  }, { token: jwt.sign({ sub: 'ADMIN', type: 'access' }, { expiresIn: '10m' }) });
+  const media = await db.mediaFile.create({ data: { bucket: 'test', storagePath: `browser-${Date.now()}`, url: `${base}/images/logo-kmf-crvena-zvezda.png`, originalName: 'Тест фотографија', fileName: 'test.png', mimeType: 'image/png', size: 100 } });
+  const page = await context.newPage();
+  testPage = page;
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(message.text()); });
+  await page.goto(`${base}/admin/shop/products`);
+  await page.getByRole('heading', { name: 'Производи', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Додај производ', exact: true }).click();
+  const name = `Браузер мајица ${Date.now()}`;
+  await page.getByLabel('Назив *', { exact: true }).fill(name);
+  await page.getByLabel('Опис *', { exact: true }).fill('Памучна мајица за проверу форме.');
+  await page.getByLabel(/^Цена у динарима \*/).fill('3200,00');
+  await page.getByRole('button', { name: '+ ДОДАЈ ВЕЛИЧИНУ', exact: true }).click();
+  await page.getByPlaceholder('Величина', { exact: true }).fill('M');
+  await page.getByRole('button', { name: 'Изабери главну фотографију', exact: true }).click();
+  await page.getByRole('button', { name: 'Изабери фотографију: Тест фотографија', exact: true }).click();
+  await page.getByRole('button', { name: 'Додај фотографију у галерију', exact: true }).click();
+  await page.getByRole('button', { name: 'Изабери фотографију: Тест фотографија', exact: true }).click();
+  await page.getByRole('button', { name: 'Затвори избор', exact: true }).click();
+  await page.getByRole('button', { name: 'Сачувај производ', exact: true }).click();
+  await page.getByText('Производ је успешно сачуван.', { exact: true }).waitFor();
+  let saved = await db.product.findFirstOrThrow({ where: { nameSr: name }, include: { variants: true, gallery: true } });
+  assert.equal(saved.priceMinor, 320000);
+  assert.equal(saved.coverImageId, media.id);
+  assert.equal(saved.gallery.length, 1);
+  assert.equal(saved.variants[0].size, 'M');
+  const variantId = saved.variants[0].id;
+  await page.getByLabel(/^Цена у динарима \*/).fill('3300,25');
+  await page.getByRole('checkbox', { name: 'Доступно', exact: true }).uncheck();
+  const update = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(saved.id));
+  await page.getByRole('button', { name: 'Сачувај производ', exact: true }).click();
+  assert.equal((await update).status(), 200);
+  saved = await db.product.findUniqueOrThrow({ where: { id: saved.id }, include: { variants: true } });
+  assert.equal(saved.priceMinor, 330025);
+  assert.equal(saved.variants[0].id, variantId);
+  assert.equal(saved.variants[0].available, false);
+  const artifactDir = process.env.SHOP_TEST_ARTIFACT_DIR;
+  if (artifactDir) { await mkdir(artifactDir, { recursive: true }); await page.screenshot({ path: path.join(artifactDir, 'shop-desktop.png'), fullPage: true }); }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => document.querySelector('.admin-sidebar').getBoundingClientRect().right <= 1);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'mobile page must not overflow horizontally');
+  assert.equal(await page.locator('.admin-page > section, .admin-page-head, .admin-form input').evaluateAll((elements) => elements.every((element) => {
+    if (!element.getClientRects().length) return true;
+    const box = element.getBoundingClientRect();
+    return box.left >= 0 && box.right <= window.innerWidth;
+  })), true, 'mobile cards and form controls must fit the viewport, even when the body clips overflow');
+  if (artifactDir) await page.screenshot({ path: path.join(artifactDir, 'shop-mobile.png'), fullPage: true });
+  assert.deepEqual(errors, []);
+  // Recreate a context so role restrictions are exercised from a clean session.
+  const editor = await browser.newContext();
+  editor.setDefaultTimeout(15000);
+  await editor.route('**/*', (route) => new URL(route.request().url()).origin === base ? route.continue() : route.fulfill({ json: {} }));
+  await editor.addInitScript(({ token }) => {
+    localStorage.setItem('kmf_admin_access_token', token);
+    localStorage.setItem('kmf_admin_user', JSON.stringify({ id: 'EDITOR', role: 'EDITOR' }));
+  }, { token: jwt.sign({ sub: 'EDITOR', type: 'access' }, { expiresIn: '10m' }) });
+  const editorPage = await editor.newPage();
+  await editorPage.goto(`${base}/admin/shop/products`);
+  await editorPage.waitForURL('**/admin/forbidden');
+  assert.equal(await editorPage.getByText('ПРОДАВНИЦА', { exact: true }).count(), 0);
+  console.log('PASS: CMS create/update, exact price, cover/gallery, stable sizes, 390px layout, EDITOR guard/sidebar.');
+} catch (error) {
+  if (testPage) {
+    console.error('Browser URL:', testPage.url());
+    console.error('Browser errors:', browserErrors);
+    console.error('Visible content:', (await testPage.locator('body').innerText()).slice(0, 5000));
+    if (process.env.SHOP_TEST_ARTIFACT_DIR) {
+      await mkdir(process.env.SHOP_TEST_ARTIFACT_DIR, { recursive: true });
+      await testPage.screenshot({ path: path.join(process.env.SHOP_TEST_ARTIFACT_DIR, 'shop-failure.png'), fullPage: true });
+    }
+  }
+  throw error;
+} finally {
+  await browser?.close();
+  await api.close();
+  await db.$disconnect();
+  await new Promise((resolve) => server.close(resolve));
+}

@@ -12,6 +12,16 @@ export const ADMIN_ROUTES: Routes = [
     canActivate: [adminAuthGuard],
     children: [
       {
+        path: 'shop/products',
+        canActivate: [roleGuard],
+        data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+        loadComponent: () => import('./pages/shop/products/products-admin.component').then((m) => m.ProductsAdminComponent),
+        title: 'Производи | КМФ Црвена звезда'
+      },
+      { path: 'shop/orders/new', canActivate: [roleGuard], data: { roles: ['SUPER_ADMIN', 'ADMIN'] }, loadComponent: () => import('./pages/shop/orders/manual-order.component').then(m => m.ManualOrderComponent), title: 'Ручни унос поруџбине | КМФ Црвена звезда' },
+      { path: 'shop/orders', canActivate: [roleGuard], data: { roles: ['SUPER_ADMIN', 'ADMIN'] }, loadComponent: () => import('./pages/shop/orders/orders-admin.component').then(m => m.OrdersAdminComponent), title: 'Поруџбине | КМФ Црвена звезда' },
+      { path: 'shop/season-tickets', canActivate: [roleGuard], data: { roles: ['SUPER_ADMIN', 'ADMIN'] }, loadComponent: () => import('./pages/shop/season-tickets/season-tickets-admin.component').then(m => m.SeasonTicketsAdminComponent), title: 'Сезонске карте | КМФ Црвена звезда' },
+      {
         path: '',
         loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent),
         title: 'Dashboard | KMF Admin'

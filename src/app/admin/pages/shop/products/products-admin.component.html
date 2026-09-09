@@ -1,0 +1,128 @@
+<section class="admin-page">
+  <div class="admin-page-head">
+    <div><span class="admin-kicker">ПРОДАВНИЦА</span><h1>Производи</h1></div>
+    <button type="button" class="admin-button primary" (click)="newProduct()" [disabled]="busy">Додај производ</button>
+  </div>
+  <section class="admin-card table-card">
+    <div class="toolbar">
+      <input type="search" aria-label="Претрага по називу" placeholder="Претрага по називу…" [(ngModel)]="query.search" (keyup.enter)="load(true)" />
+      <select aria-label="Филтер производа" [(ngModel)]="filter" (change)="load(true)" [disabled]="loading">
+        <option value="all">Сви</option><option value="active">Активни</option><option value="inactive">Неактивни</option>
+        <option value="soldOut">Распродати</option><option value="featured">Истакнути</option>
+      </select>
+      <button class="admin-button ghost" type="button" (click)="load(true)" [disabled]="loading">Претражи</button>
+    </div>
+    @if (loading) { <div class="skeleton-lines" aria-label="Учитавање производа"></div> }
+    @else if (loadError) { <div class="empty-state" role="alert">{{ loadError }} <button type="button" class="admin-button ghost" (click)="load()">Покушај поново</button></div> }
+    @else if (!items.length) { <div class="empty-state">Нема производа за изабране филтере.</div> }
+    @else {
+      <div class="shop-table-scroll">
+        <table>
+          <thead><tr><th>Производ</th><th>Цена</th><th>Доступност</th><th>Приказ</th><th>Редослед</th><th>Акције</th></tr></thead>
+          <tbody>
+            @for (item of items; track item.id) {
+              <tr [class.is-selected]="selected?.id === item.id">
+                <td><div class="product-cell"><img [src]="item.coverImage?.url || '/images/logo-kmf-crvena-zvezda.png'" [alt]="item.nameSr" /><strong>{{ item.nameSr }}</strong></div></td>
+                <td>{{ money(item.priceMinor) }}</td><td>{{ labels[item.availability] }}</td>
+                <td><span class="pill" [class.good]="item.active">{{ item.active ? 'Активан' : 'Неактиван' }}</span>@if (item.featured) { <span class="pill good">Истакнут</span> }</td>
+                <td>{{ item.displayOrder }}</td>
+                <td><div class="row-actions compact">
+                  <button type="button" (click)="edit(item)" [disabled]="busy">Измени</button>
+                  <button type="button" (click)="toggle(item)" [disabled]="busy">{{ item.active ? 'Деактивирај' : 'Активирај' }}</button>
+                  <button type="button" class="danger" (click)="remove(item)" [disabled]="busy || !item.canDelete" [title]="item.canDelete ? 'Обриши производ' : 'Бришу се само неактивни производи без поруџбина'">Обриши</button>
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <footer class="pagination"><span>Укупно: {{ total }}</span>
+      <button type="button" [disabled]="query.page <= 1 || loading" (click)="page(-1)">Претходна</button>
+      <b>{{ query.page }} / {{ totalPages }}</b>
+      <button type="button" [disabled]="query.page >= totalPages || loading" (click)="page(1)">Следећа</button>
+    </footer>
+  </section>
+
+  <section class="admin-card editor-card wide">
+    <div class="card-head"><h2>{{ selected ? 'Измена производа' : 'Нови производ' }}</h2></div>
+    @if (detailLoading) { <div class="skeleton-lines" aria-label="Учитавање детаља"></div> }
+    <form [formGroup]="form" (ngSubmit)="save()" class="admin-form">
+      <fieldset [disabled]="busy">
+        <legend>ОСНОВНИ ПОДАЦИ</legend>
+        <label>Назив * <input formControlName="nameSr" maxlength="180" /></label>
+        <label>Опис * <textarea formControlName="descriptionSr" rows="5" maxlength="20000"></textarea></label>
+        <div class="form-grid two-cols">
+          <label>Цена у динарима * <input formControlName="price" inputmode="decimal" placeholder="3200,00" /><small>Без раздвајања хиљада. Дозвољене су две децимале.</small></label>
+          <label>Претходна цена <input formControlName="compareAtPrice" inputmode="decimal" placeholder="Опционо" /></label>
+        </div>
+        <label>Адреса производа <input formControlName="slug" placeholder="Аутоматски из назива" /><small>Латинична слова, цифре и цртице. Промена назива не мења постојећу адресу.</small></label>
+        <details><summary>Преводи — опционо</summary>
+          <div class="form-grid two-cols">
+            <label>Назив на енглеском <input formControlName="nameEn" /></label><label>Назив на руском <input formControlName="nameRu" /></label>
+            <label>Опис на енглеском <textarea formControlName="descriptionEn" rows="4"></textarea></label><label>Опис на руском <textarea formControlName="descriptionRu" rows="4"></textarea></label>
+          </div>
+        </details>
+      </fieldset>
+
+      <fieldset [disabled]="busy"><legend>ФОТОГРАФИЈЕ</legend>
+        <div class="cover-row">
+          @if (cover) { <img [src]="cover.url" alt="Главна фотографија" /> }
+          @else { <span>Главна фотографија није изабрана.</span> }
+          <button type="button" class="admin-button ghost" (click)="pickerMode = 'cover'">Изабери главну фотографију</button>
+          @if (cover) { <button type="button" class="admin-button ghost" (click)="removeCover()">Уклони главну фотографију</button> }
+        </div>
+        <h3>Галерија</h3>
+        <div class="gallery-list">
+          @for (image of gallery; track image.mediaFileId; let index = $index) {
+            <div class="gallery-item"><img [src]="image.mediaFile?.url" [alt]="image.altSr || 'Фотографија производа'" />
+              <label>Опис фотографије <input [(ngModel)]="image.altSr" [ngModelOptions]="{ standalone: true }" (ngModelChange)="form.markAsDirty()" maxlength="250" /></label>
+              <div class="row-actions compact">
+                <button type="button" (click)="moveImage(index, -1)" [disabled]="index === 0">Пре</button>
+                <button type="button" (click)="moveImage(index, 1)" [disabled]="index === gallery.length - 1">После</button>
+                <button type="button" class="danger" (click)="removeImage(index)">Уклони</button>
+              </div>
+            </div>
+          }
+        </div>
+        <button type="button" class="admin-button ghost" (click)="pickerMode = 'gallery'" [disabled]="gallery.length >= 50">Додај фотографију у галерију</button>
+        @if (pickerMode) {
+          <div class="picker-head"><strong>{{ pickerMode === 'cover' ? 'Избор главне фотографије' : 'Избор фотографија за галерију' }}</strong><button type="button" class="admin-button ghost" (click)="pickerMode = null">Затвори избор</button></div>
+          <app-media-picker [selectedIds]="pickerSelection" (picked)="pick($event)" />
+        }
+      </fieldset>
+
+      <fieldset [disabled]="busy"><legend>ВЕЛИЧИНЕ</legend>
+        <p class="help">Унесите произвољну величину, на пример С, М, 3XL, UNI или 128. Доступност се води ручно.</p>
+        <div formArrayName="variants">
+          @for (variant of variants.controls; track variant; let index = $index) {
+            <div class="variant-row" [formGroupName]="index">
+              <label>Величина <input formControlName="size" placeholder="Величина" /></label>
+              <label>Шифра артикла <input formControlName="sku" placeholder="Опционо" /></label>
+              <label class="check"><input type="checkbox" formControlName="active" /> Активна</label>
+              <label class="check"><input type="checkbox" formControlName="available" /> {{ variant.controls.available.value ? 'Доступно' : 'Распродато' }}</label>
+              <div class="row-actions compact">
+                <button type="button" (click)="moveVariant(index, -1)" [disabled]="index === 0">Горе</button>
+                <button type="button" (click)="moveVariant(index, 1)" [disabled]="index === variants.length - 1">Доле</button>
+                <button type="button" class="danger" (click)="removeVariant(index)">Уклони</button>
+              </div>
+            </div>
+          }
+        </div>
+        <button type="button" class="admin-button ghost" (click)="addVariant()" [disabled]="variants.length >= 100">+ ДОДАЈ ВЕЛИЧИНУ</button>
+      </fieldset>
+
+      <fieldset [disabled]="busy"><legend>ПРИКАЗ</legend>
+        <div class="switch-row"><label><input type="checkbox" formControlName="active" /> Активан</label><label><input type="checkbox" formControlName="featured" /> Истакнут производ</label></div>
+        <div class="form-grid two-cols">
+          <label>Редослед приказа <input type="number" min="0" step="1" formControlName="displayOrder" /></label>
+          <label>Редослед на почетној <input type="number" min="0" step="1" formControlName="featuredOrder" /></label>
+          <label>Ново до <input type="datetime-local" formControlName="newUntil" /></label>
+          <label>Доступност <select formControlName="availability">@for (option of availabilityOptions; track option) { <option [value]="option">{{ labels[option] }}</option> }</select></label>
+        </div>
+      </fieldset>
+      @if (error) { <div class="admin-error" role="alert">{{ error }}</div> }
+      <button type="submit" class="admin-button primary full" [disabled]="busy">{{ saving ? 'Чување…' : 'Сачувај производ' }}</button>
+    </form>
+  </section>
+</section>

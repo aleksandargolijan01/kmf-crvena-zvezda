@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, ServiceUnavailableException } 
 import { ConfigService } from '@nestjs/config';
 import { existsSync } from 'fs';
 import { isAbsolute, resolve } from 'path';
-import nodemailer, { Transporter } from 'nodemailer';
+import { MailService } from '../mail/mail.service';
 import { CreateSponsorInquiryDto } from './dto/create-sponsor-inquiry.dto';
 import { buildSponsorInquiryEmail } from './templates/sponsor-inquiry-email.template';
 import { sanitizeSponsorInquiryInput } from './utils/sponsor-inquiry-sanitizer';
@@ -10,9 +10,8 @@ import { sanitizeSponsorInquiryInput } from './utils/sponsor-inquiry-sanitizer';
 @Injectable()
 export class SponsorInquiriesService {
   private readonly logger = new Logger(SponsorInquiriesService.name);
-  private transporter?: Transporter;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService, private readonly mail: MailService) {}
 
   async create(dto: CreateSponsorInquiryDto) {
     const inquiry = sanitizeSponsorInquiryInput(dto);
@@ -45,7 +44,7 @@ export class SponsorInquiriesService {
     const html = buildSponsorInquiryEmail({ inquiry, submittedAt, replyToEnabled });
 
     try {
-      await this.getTransporter().sendMail({
+      await this.mail.send({
         to,
         from,
         subject: this.safeHeaderText(`Нови упит за спонзорство — ${inquiry.companyName}`),
@@ -66,22 +65,6 @@ export class SponsorInquiriesService {
     }
 
     return this.publicResponse();
-  }
-
-  private getTransporter() {
-    if (!this.transporter) {
-      this.transporter = nodemailer.createTransport({
-        host: this.config.get<string>('SMTP_HOST'),
-        port: this.config.get<number>('SMTP_PORT', 587),
-        secure: this.readBoolean('SMTP_SECURE', false),
-        auth: {
-          user: this.config.get<string>('SMTP_USER'),
-          pass: this.config.get<string>('SMTP_PASS'),
-        },
-      });
-    }
-
-    return this.transporter;
   }
 
   private isSmtpConfigured() {

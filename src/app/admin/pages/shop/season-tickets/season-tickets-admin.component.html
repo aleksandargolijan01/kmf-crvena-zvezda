@@ -1,0 +1,16 @@
+<section class="operations" lang="sr-Cyrl"><header><h1>Сезонске карте</h1><button [disabled]="busy()" (click)="edit(null)">ДОДАЈ КАРТУ</button></header>
+  <p>Метод провере одређује се за сваку карту. Карте се уносе из званичне евиденције клуба.</p>
+  <form class="filters" (ngSubmit)="load()"><label>Претрага броја или сезоне<input name="search" [(ngModel)]="search" maxlength="120" /></label><button [disabled]="busy()">ПРИКАЖИ</button></form>
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }@if (notice()) { <p role="status">{{ notice() }}</p> }@if (busy()) { <p role="status">Учитавање…</p> }
+  @if (editing()) {
+    <form class="panel" [formGroup]="form" (ngSubmit)="save()" novalidate><h2>{{ selected() ? 'Измена карте' : 'Нова карта' }}</h2><fieldset [disabled]="busy()"><div class="grid">
+      <label>Број карте<input formControlName="cardNumber" maxlength="100" required /></label><label>Сезона<input formControlName="seasonKey" maxlength="80" required /></label>
+      <label>Важи од<input type="datetime-local" formControlName="validFrom" /></label><label>Важи до<input type="datetime-local" formControlName="validUntil" /></label>
+      <label>Метод провере<select formControlName="verificationMethod"><option value="">Није изабран</option>@for (method of methodKeys; track method) { <option [value]="method">{{ methods[method] }}</option> }</select></label>
+      <label>Нови податак за потврду<input type="password" formControlName="verificationValue" maxlength="120" autocomplete="new-password" /><small>Постојећи податак се не приказује. Празно поље задржава постојећу вредност ако метод остаје исти.</small></label>
+    </div><label class="check"><input type="checkbox" formControlName="active" /> Активна</label><p>Празни датуми не ограничавају период важења у оквиру сезоне. Промена карте поништава претходне потврде попуста.</p><div class="actions"><button type="submit" [disabled]="form.invalid || busy()">САЧУВАЈ</button><button type="button" (click)="close()">ОДУСТАНИ</button></div></fieldset></form>
+  }
+  <div class="table-scroll"><table><thead><tr><th>Број</th><th>Сезона</th><th>Активна</th><th>Важење</th><th>Метод</th><th>Измена</th></tr></thead><tbody>@for (ticket of tickets(); track ticket.id) { <tr><td>{{ ticket.cardNumber }}</td><td>{{ ticket.seasonKey }}</td><td>{{ ticket.active ? 'Да' : 'Не' }}</td><td>{{ ticket.validFrom ? (ticket.validFrom | date:'dd.MM.yyyy. HH:mm') : 'Без почетног датума' }}<br />{{ ticket.validUntil ? (ticket.validUntil | date:'dd.MM.yyyy. HH:mm') : 'Без крајњег датума' }}</td><td>{{ ticket.verificationMethod ? methods[ticket.verificationMethod] : 'Није изабран' }}</td><td><button [disabled]="busy()" (click)="edit(ticket)">ИЗМЕНИ</button></td></tr> }</tbody></table></div>
+  @if (!busy() && !tickets().length) { <p>Нема сезонских карата за изабране услове.</p> }
+  <nav class="actions" aria-label="Странице сезонских карата"><button [disabled]="busy() || page() <= 1" (click)="load(page() - 1)">ПРЕТХОДНА</button><span>{{ page() }} / {{ pages() || 1 }}</span><button [disabled]="busy() || page() >= pages()" (click)="load(page() + 1)">СЛЕДЕЋА</button></nav>
+</section>

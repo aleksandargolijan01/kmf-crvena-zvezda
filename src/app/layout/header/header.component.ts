@@ -1,10 +1,11 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID, afterNextRender } from '@angular/core';
 import { IsActiveMatchOptions, NavigationStart, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { fromEvent, Subscription, throttleTime } from 'rxjs';
 import { TranslationService } from '../../i18n/translation.service';
 import { LanguageSwitcherComponent } from '../../shared/language-switcher/language-switcher.component';
 import { SocialLinksComponent } from '../../shared/social-links/social-links.component';
+import { CartService } from '../../core/shop/cart.service';
 
 type NavDropdown = 'leadership' | 'team';
 
@@ -108,16 +109,23 @@ type NavDropdown = 'leadership' | 'team';
           </div>
         </div>
         <a routerLink="/vesti" routerLinkActive="is-active" [routerLinkActiveOptions]="exactRouteMatch" (click)="close()">{{ i18n.t('nav.news') }}</a>
+        <a routerLink="/prodavnica" routerLinkActive="is-active" (click)="close()" lang="sr-Cyrl">ПРОДАВНИЦА</a>
         <a routerLink="/prijatelji-kluba" routerLinkActive="is-active" [routerLinkActiveOptions]="exactRouteMatch" (click)="close()">{{ i18n.t('nav.friends') }}</a>
         <a routerLink="/" fragment="kontakt" routerLinkActive="is-active" [routerLinkActiveOptions]="exactFragmentMatch" (click)="close()">{{ i18n.t('nav.contact') }}</a>
       </nav>
+
+      <a class="header-cart" routerLink="/korpa" (click)="close()" [attr.aria-label]="'Корпа, број артикала: ' + cart.count()" lang="sr-Cyrl">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l2.5 12h11l2-8H6M9 20h.01M18 20h.01" /></svg>
+        <span aria-hidden="true">{{ cart.count() }}</span>
+      </a>
 
       <div class="header-actions">
         <app-language-switcher />
         <app-social-links />
       </div>
     </header>
-  `
+  `,
+  styleUrl: './header-shop.scss'
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   menuOpen = false;
@@ -159,8 +167,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private readonly elementRef: ElementRef<HTMLElement>,
     private readonly zone: NgZone,
     private readonly router: Router,
-    readonly i18n: TranslationService
-  ) {}
+    readonly i18n: TranslationService,
+    readonly cart: CartService
+  ) { afterNextRender(() => this.cart.initialize()); }
 
   @HostListener('document:pointerdown', ['$event'])
   onDocumentPointerDown(event: PointerEvent): void {

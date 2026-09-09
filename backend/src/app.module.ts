@@ -15,6 +15,7 @@ import { PlayersModule } from './modules/players/players.module';
 import { SponsorInquiriesModule } from './modules/sponsor-inquiries/sponsor-inquiries.module';
 import { SponsorsModule } from './modules/sponsors/sponsors.module';
 import { StaffModule } from './modules/staff/staff.module';
+import { ShopModule } from './modules/shop/shop.module';
 
 @Module({
   imports: [
@@ -66,6 +67,13 @@ import { StaffModule } from './modules/staff/staff.module';
         SPONSOR_INQUIRY_FROM_EMAIL: Joi.string().allow('').email().optional(),
         SPONSOR_INQUIRY_REPLY_TO_ENABLED: Joi.boolean().default(true),
         SPONSOR_LOGO_PATH: Joi.string().trim().allow('').optional(),
+        SHOP_TOKEN_SECRET: Joi.string().min(32).allow('').optional(),
+        SHOP_ACTIVE_SEASON: Joi.string().trim().allow('').optional(),
+        SHOP_VERIFIER_KEYS: Joi.string().allow('').optional(),
+        SHOP_VERIFIER_KEY_VERSION: Joi.number().integer().min(1).default(1),
+        SHOP_EMAIL_WORKER_ENABLED: Joi.boolean().default(false),
+        SHOP_ORDER_RECIPIENT_EMAIL: Joi.string().email().allow('').optional(),
+        SHOP_ORDER_FROM_EMAIL: Joi.string().email().allow('').optional(),
         PORT: Joi.number().default(3000),
         NODE_ENV: Joi.string()
           .valid('development', 'production', 'test', 'staging')
@@ -90,6 +98,7 @@ import { StaffModule } from './modules/staff/staff.module';
     SponsorInquiriesModule,
     SponsorsModule,
     StaffModule,
+    ShopModule,
   ],
   providers: [
     {

@@ -250,7 +250,17 @@ export class PublicNewsService {
   }
 
   private excerpt(value?: string | null): string {
-    const text = (value ?? '').replace(/\s+/g, ' ').trim();
+    const text = (value ?? '')
+      .replace(/<(script|style|template|iframe|object|embed|svg|math)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
     return text.length > 160 ? `${text.slice(0, 157).trim()}...` : text;
   }
 

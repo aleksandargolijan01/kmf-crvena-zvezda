@@ -12,7 +12,7 @@
         <div class="article-hero-content">
           <div class="article-meta">
             <span>{{ i18n.text(article.category) }}</span>
-            <time>{{ article.date }}</time>
+            <time [attr.datetime]="article.publishedAt">{{ article.date }}</time>
           </div>
           <h1>{{ i18n.text(article.title) }}</h1>
           <p>{{ i18n.text(article.excerpt) }}</p>

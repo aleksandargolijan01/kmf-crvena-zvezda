@@ -1,0 +1,39 @@
+<main lang="sr-Cyrl">
+  <header class="section shop-hero"><p class="eyebrow">ЗВЕЗДИНА ПРОДАВНИЦА</p><h1>ВАША КОРПА</h1><a routerLink="/prodavnica">← НАСТАВИ КУПОВИНУ</a></header>
+  <section class="section shop-content" aria-label="Садржај корпе">
+    @if (cart.notice()) { <p role="status">{{ cart.notice() }}</p> }
+    @if (!cart.items().length) {
+      <div class="shop-state"><h2>ВАША КОРПА ЈЕ ПРАЗНА</h2><p>Погледајте званичну колекцију КМФ Црвена звезда.</p><a class="btn btn-primary" routerLink="/prodavnica">ИДИ У ПРОДАВНИЦУ</a></div>
+    } @else if (cart.loading()) { <p class="shop-state" role="status">Провера актуелних цена и доступности…</p> }
+    @else {
+      @if (cart.error()) { <div class="shop-error" role="alert"><p>{{ cart.error() }}</p><button class="btn btn-primary" (click)="cart.refresh()">ПОКУШАЈ ПОНОВО</button></div> }
+      <div class="cart-layout">
+        <div class="cart-items">
+          @for (row of cart.rows(); track row.variantId; let index = $index) {
+            <article class="cart-row">
+              <img appImageFallback [src]="row.product?.coverImage?.url || '/images/logo-kmf-crvena-zvezda.png'" [alt]="row.product?.name?.sr || 'Клупска продавница'" width="108" height="135" />
+              <div>
+                <h2>@if (row.product; as product) { <a [routerLink]="['/prodavnica', product.slug]">{{ product.name.sr }}</a> } @else { {{ cart.error() ? 'Сачуван артикал' : 'Артикал више није доступан' }} }</h2>
+                @if (row.variant) { <p>Величина: {{ row.variant.size }}</p> }
+                @if (!cart.error()) {
+                  @if (row.product) { <p>{{ money(row.product.priceMinor) }} по комаду</p> }
+                  @if (!row.available) { <p class="shop-error">Производ или изабрана величина више нису доступни. Уклоните артикал из корпе.</p> }
+                }
+                <div class="cart-controls"><app-quantity-selector [value]="row.quantity" [disabled]="!row.available || !!cart.error()" [label]="'Количина за артикал ' + (index + 1)" (quantityChange)="cart.updateQuantity(row.variantId, $event)" /><button type="button" class="cart-remove" [attr.aria-label]="'Уклони артикал ' + (index + 1)" (click)="cart.remove(row.variantId)">УКЛОНИ</button></div>
+              </div>
+            </article>
+          }
+        </div>
+        <aside class="cart-summary" aria-labelledby="summary-title"><h2 id="summary-title">ПРЕГЛЕД ПОРУЏБИНЕ</h2>
+          @if (cart.totalMinor() !== null) {
+            <dl><div><dt>Производи</dt><dd>{{ money(cart.totalMinor()!) }}</dd></div><div><dt>Достава</dt><dd>Обрачунава се накнадно</dd></div><div class="cart-total"><dt>УКУПНО ЗА ПРОИЗВОДЕ</dt><dd aria-live="polite">{{ money(cart.totalMinor()!) }}</dd></div></dl>
+          } @else { <p>Укупан износ није доступан док се не провере или уклоне недоступни артикли.</p> }
+          <small>Трошак доставе није укључен и обрачунава се накнадно. Плаћање се врши поузећем.</small>
+          <p class="shop-muted">Приказане су актуелне цене производа, без сезонског попуста.</p>
+          @if (cart.totalMinor() !== null) { <a class="btn btn-primary shop-buy" routerLink="/porudzbina">НАСТАВИ НА ПОРУЧИВАЊЕ</a> }
+          <button type="button" class="cart-remove" (click)="cart.refresh()">ОСВЕЖИ ЦЕНЕ И ДОСТУПНОСТ</button>
+        </aside>
+      </div>
+    }
+  </section>
+</main>

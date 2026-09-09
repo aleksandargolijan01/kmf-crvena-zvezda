@@ -5,11 +5,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve --host 127.0.0.1 --port 4200",
-    "build": "ng build",
-    "build:production": "ng build && node tools/generate-static-seo.mjs",
+    "build": "node tools/generate-sitemap.mjs && ng build",
+    "build:production": "npm run build",
     "watch": "ng build --watch --configuration development",
     "generate:sitemap": "node tools/generate-sitemap.mjs",
-    "test:seo": "node --test tools/static-news-seo.test.mjs"
+    "test:seo": "node --test tools/static-news-seo.test.mjs tools/static-shop-seo.test.mjs"
   },
   "dependencies": {
     "@angular/common": "^21.2.17",
@@ -17,7 +17,9 @@
     "@angular/core": "^21.2.17",
     "@angular/forms": "^21.2.17",
     "@angular/platform-browser": "^21.2.17",
+    "@angular/platform-server": "21.2.17",
     "@angular/router": "^21.2.17",
+    "@angular/ssr": "21.2.17",
     "rxjs": "~7.8.2",
     "tslib": "^2.8.1",
     "zone.js": "~0.16.0"

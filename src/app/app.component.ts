@@ -5,6 +5,7 @@ import { auditTime, filter, fromEvent, Subscription } from 'rxjs';
 import { HeaderComponent } from './layout/header/header.component';
 import { FooterComponent } from './layout/footer/footer.component';
 import { TranslationService } from './i18n/translation.service';
+import { SeoService } from './core/seo/seo.service';
 
 @Component({
   selector: 'app-root',
@@ -48,6 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private readonly changeDetector: ChangeDetectorRef,
     private readonly zone: NgZone,
     private readonly router: Router,
+    private readonly seo: SeoService,
     readonly i18n: TranslationService
   ) {}
 
@@ -98,6 +100,15 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private updateRouteMode(url: string): void {
     this.isAdminRoute = url.startsWith('/admin');
+    if (this.isAdminRoute) {
+      this.seo.set({
+        title: 'KMF Crvena zvezda CMS',
+        description: 'Administrativni dio sajta KMF Crvena zvezda.',
+        path: url.split('?')[0],
+        robots: 'noindex, nofollow',
+        schema: []
+      });
+    }
     this.changeDetector.markForCheck();
   }
 }

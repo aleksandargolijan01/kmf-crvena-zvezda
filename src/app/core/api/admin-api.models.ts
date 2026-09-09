@@ -70,6 +70,8 @@ export interface MediaFile {
     boardImages: number;
     staffImages: number;
     sponsorLogos: number;
+    productCovers: number;
+    productImages: number;
   };
   usage?: {
     inUse: boolean;

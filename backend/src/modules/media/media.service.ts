@@ -61,6 +61,8 @@ export class MediaService implements OnModuleInit {
         boardImages: true,
         staffImages: true,
         sponsorLogos: true,
+        productCovers: true,
+        productImages: true,
       },
     },
   } satisfies Prisma.MediaFileSelect;
@@ -245,26 +247,26 @@ export class MediaService implements OnModuleInit {
   }
 
   async remove(id: string) {
-    const mediaFile = await this.prisma.mediaFile.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        bucket: true,
-        storagePath: true,
-      },
-    });
-
-    if (!mediaFile) {
-      throw new NotFoundException('Media file not found.');
-    }
-
-    const usage = await this.getUsage(id);
-    if (usage.inUse) {
-      throw new ConflictException({
-        message: 'Media file is in use and cannot be deleted.',
-        usage,
+    // Reserve deletion before storage I/O. Shop attachments acquire the same row lock
+    // and reject this marker. A failed storage deletion remains retryable.
+    const mediaFile = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "MediaFile" WHERE "id" = ${id} FOR UPDATE`;
+      const file = await tx.mediaFile.findUnique({ where: { id } });
+      if (!file) throw new NotFoundException('Media file not found.');
+      const usage = await this.getUsage(id, tx);
+      if (usage.inUse) {
+        throw new ConflictException({
+          message: usage.references.some((reference) => reference.type.startsWith('product.'))
+            ? 'Фотографију користи производ и не може да се обрише.'
+            : 'Media file is in use and cannot be deleted.',
+          usage,
+        });
+      }
+      await tx.mediaFile.update({
+        where: { id }, data: { deletingAt: file.deletingAt ?? new Date() },
       });
-    }
+      return file;
+    });
 
     const { error } = await this.supabase.storage
       .from(mediaFile.bucket)
@@ -274,7 +276,7 @@ export class MediaService implements OnModuleInit {
       throw new InternalServerErrorException('Media file deletion from storage failed.');
     }
 
-    await this.prisma.mediaFile.delete({ where: { id } });
+    await this.prisma.mediaFile.deleteMany({ where: { id, deletingAt: { not: null } } });
     this.logger.log(`Media file deleted: id=${mediaFile.id}, storagePath=${mediaFile.storagePath}`);
 
     return { success: true };
@@ -367,7 +369,7 @@ export class MediaService implements OnModuleInit {
     };
   }
 
-  private async getUsage(id: string) {
+  private async getUsage(id: string, client: Prisma.TransactionClient = this.prisma) {
     const [
       newsCoverCount,
       playerImageCount,
@@ -376,17 +378,23 @@ export class MediaService implements OnModuleInit {
       boardImageCount,
       staffImageCount,
       sponsorLogoCount,
-    ] = await this.prisma.$transaction([
-      this.prisma.news.count({ where: { coverImageId: id } }),
-      this.prisma.player.count({ where: { imageId: id } }),
-      this.prisma.u19Player.count({ where: { imageId: id } }),
-      this.prisma.managementMember.count({ where: { imageId: id } }),
-      this.prisma.boardMember.count({ where: { imageId: id } }),
-      this.prisma.staffMember.count({ where: { imageId: id } }),
-      this.prisma.sponsor.count({ where: { logoId: id } }),
+      productCoverCount,
+      productImageCount,
+    ] = await Promise.all([
+      client.news.count({ where: { coverImageId: id } }),
+      client.player.count({ where: { imageId: id } }),
+      client.u19Player.count({ where: { imageId: id } }),
+      client.managementMember.count({ where: { imageId: id } }),
+      client.boardMember.count({ where: { imageId: id } }),
+      client.staffMember.count({ where: { imageId: id } }),
+      client.sponsor.count({ where: { logoId: id } }),
+      client.product.count({ where: { coverImageId: id } }),
+      client.productImage.count({ where: { mediaFileId: id } }),
     ]);
 
     const references = [
+      { type: 'product.coverImage', count: productCoverCount },
+      { type: 'product.gallery', count: productImageCount },
       {
         type: 'news.coverImage',
         count: newsCoverCount,

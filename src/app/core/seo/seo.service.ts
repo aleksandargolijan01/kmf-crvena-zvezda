@@ -23,10 +23,10 @@ export interface SeoConfig {
   publishedAt?: string;
   modifiedAt?: string;
   author?: string;
+  descriptionMaxLength?: number;
 }
 
 const themeColor = '#d50012';
-const supportedLanguages: LanguageCode[] = ['sr', 'en', 'ru'];
 
 @Injectable({ providedIn: 'root' })
 export class SeoService {
@@ -57,7 +57,7 @@ export class SeoService {
       '@context': 'https://schema.org',
       '@type': 'SportsOrganization',
       name: environment.defaultSiteName,
-      alternateName: 'KMF Crvena Zvezda',
+      alternateName: ['КМФ Црвена звезда', 'Klub malog fudbala Crvena zvezda'],
       url: this.absoluteUrl('/'),
       logo: this.absoluteUrl('/images/logo-kmf-crvena-zvezda.png'),
       image: this.absoluteUrl(environment.defaultOgImage),
@@ -77,7 +77,7 @@ export class SeoService {
       '@type': 'WebSite',
       name: environment.defaultSiteName,
       url: this.absoluteUrl('/'),
-      inLanguage: ['sr-Cyrl', 'en', 'ru'],
+      inLanguage: 'sr-Cyrl',
       publisher: {
         '@type': 'SportsOrganization',
         name: environment.defaultSiteName,
@@ -173,7 +173,7 @@ export class SeoService {
     }
 
     this.setCanonical(canonical);
-    this.setHreflang(config.path);
+    this.removeHreflangLinks();
     this.setStructuredData(config.schema || []);
   }
 
@@ -211,7 +211,8 @@ export class SeoService {
   }
 
   private configDescription(config: SeoConfig): string {
-    return config.descriptionKey ? this.i18n.t(config.descriptionKey) : this.text(config.description);
+    const description = config.descriptionKey ? this.i18n.t(config.descriptionKey) : this.text(config.description);
+    return config.descriptionMaxLength ? this.truncate(description, config.descriptionMaxLength) : description;
   }
 
   private cleanPath(path: string): string {
@@ -235,11 +236,10 @@ export class SeoService {
     this.setLink('canonical', url);
   }
 
-  private setHreflang(path: string): void {
-    for (const language of supportedLanguages) {
-      this.setLink('alternate', this.absoluteUrl(this.cleanPath(path)), language);
-    }
-    this.setLink('alternate', this.absoluteUrl(this.cleanPath(path)), 'x-default');
+  private removeHreflangLinks(): void {
+    this.document.head
+      .querySelectorAll('link[rel="alternate"][hreflang]')
+      .forEach((node) => node.remove());
   }
 
   private setLink(rel: string, href: string, hreflang?: string): void {
@@ -266,8 +266,19 @@ export class SeoService {
       const script = this.document.createElement('script');
       script.type = 'application/ld+json';
       script.setAttribute('data-seo-jsonld', 'true');
-      script.textContent = JSON.stringify(item);
+      script.textContent = JSON.stringify(item).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
       this.document.head.appendChild(script);
     }
+  }
+
+  private truncate(value: string, maxLength: number): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    const shortened = value.slice(0, Math.max(0, maxLength - 1));
+    const lastSpace = shortened.lastIndexOf(' ');
+    const boundary = lastSpace >= Math.floor(maxLength * 0.7) ? lastSpace : shortened.length;
+    return `${shortened.slice(0, boundary).replace(/[\s,;:.-]+$/, '')}…`;
   }
 }

@@ -16,7 +16,7 @@ const routes = await writeStaticSeoArtifacts({
   outputDir,
   newsItems,
   siteUrl,
-  siteName: 'KMF Crvena Zvezda',
+  siteName: 'KMF Crvena zvezda',
   defaultImage: '/images/social-share-default.png',
   publisherLogo: '/images/logo-kmf-crvena-zvezda.png',
 });

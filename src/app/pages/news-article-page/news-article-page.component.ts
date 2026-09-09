@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, of, switchMap } from 'rxjs';
 import { PublicNewsService } from '../../core/api/public-news.service';
 import { SeoService } from '../../core/seo/seo.service';
-import { NewsItem } from '../../data/site.models';
+import { LocalizedText, NewsItem } from '../../data/site.models';
 import { TranslationService } from '../../i18n/translation.service';
 import { ImageFallbackDirective } from '../../shared/image-fallback.directive';
 import { NewsCardComponent } from '../../shared/news-card/news-card.component';
@@ -77,9 +77,12 @@ export class NewsArticlePageComponent implements OnInit {
 
   private setArticleSeo(article: NewsItem): void {
     const path = `/vesti/${article.slug}`;
+    const seoTitle = this.articleSeoTitle(article.title);
+    const description = this.articleDescription(article);
     const config = {
-      title: article.title,
-      description: article.excerpt,
+      title: seoTitle,
+      description,
+      descriptionMaxLength: 160,
       path,
       image: this.articleImage(article),
       imageAlt: this.i18n.text(article.title),
@@ -100,9 +103,48 @@ export class NewsArticlePageComponent implements OnInit {
       ...config,
       schema: [
         ...(config.schema || []),
-        this.seo.newsArticleSchema(config)
+        this.seo.newsArticleSchema({ ...config, title: article.title })
       ]
     });
+  }
+
+  private articleDescription(article: NewsItem): LocalizedText | string {
+    if (typeof article.excerpt === 'string') {
+      return this.hasText(article.excerpt)
+        ? article.excerpt
+        : article.fullContent.map((paragraph) => this.i18n.text(paragraph)).join(' ');
+    }
+
+    const content = (language: keyof LocalizedText) => article.fullContent
+      .map((paragraph) => paragraph[language] || paragraph.sr)
+      .join(' ');
+
+    return {
+      sr: this.hasText(article.excerpt.sr) ? article.excerpt.sr : content('sr'),
+      en: this.hasText(article.excerpt.en) ? article.excerpt.en : content('en'),
+      ru: this.hasText(article.excerpt.ru) ? article.excerpt.ru : content('ru')
+    };
+  }
+
+  private articleSeoTitle(title: LocalizedText | string): LocalizedText | string {
+    const withBrand = (value: string) => {
+      const branded = `${value} | KMF Crvena zvezda`;
+      return branded.length <= 65 ? branded : value;
+    };
+
+    if (typeof title === 'string') {
+      return withBrand(title);
+    }
+
+    return {
+      sr: withBrand(title.sr),
+      en: title.en ? withBrand(title.en) : withBrand(title.sr),
+      ru: title.ru ? withBrand(title.ru) : withBrand(title.sr)
+    };
+  }
+
+  private hasText(value?: string): boolean {
+    return Boolean(value?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').trim());
   }
 
   private setNotFoundSeo(): void {

@@ -2,86 +2,145 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://kmfcrvenazvezda.rs/</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://kmfcrvenazvezda.rs/tim</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://kmfcrvenazvezda.rs/u19-tim</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kmfcrvenazvezda.rs/uprava</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kmfcrvenazvezda.rs/upravni-odbor</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://kmfcrvenazvezda.rs/prijatelji-kluba</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/kontakt</loc>
-    <lastmod>2026-05-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://kmfcrvenazvezda.rs/vesti</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-09-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/vesti/crveno-beli-zapoceli-pripreme</loc>
-    <lastmod>2026-05-11</lastmod>
+    <loc>https://kmfcrvenazvezda.rs/vesti/svet-malog-fudbala-dan-na-pripremama-crvene-zvezde</loc>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/vesti/predstavljen-plan-razvoja-omladinskog-pogona</loc>
-    <lastmod>2026-05-04</lastmod>
+    <loc>https://kmfcrvenazvezda.rs/vesti/pobeda-protiv-pirota-u-pripremnom-mecu</loc>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/vesti/novi-partneri-uz-kmf-crvena-zvezda</loc>
-    <lastmod>2026-04-28</lastmod>
+    <loc>https://kmfcrvenazvezda.rs/vesti/sezonske-ulaznice-u-prodaji</loc>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/vesti/velika-podrska-sa-tribina</loc>
-    <lastmod>2026-04-20</lastmod>
+    <loc>https://kmfcrvenazvezda.rs/vesti/zvezda-na-pripremama-u-vrnjackoj-banji</loc>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/vesti/crveno-bela-porodica-zajedno</loc>
-    <lastmod>2026-04-12</lastmod>
+    <loc>https://kmfcrvenazvezda.rs/vesti/zvezda-pocela-pripreme-za-novu-sezonu</loc>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://kmfcrvenazvezda.rs/vesti/trofejni-tim-gradi-pobednicki-ritam</loc>
-    <lastmod>2026-04-05</lastmod>
+    <loc>https://kmfcrvenazvezda.rs/vesti/zeljko-arsic-u-crvenoj-zvezdi</loc>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/aleksandar-gavrilovic-novi-igrac-crvene-zvezde-2</loc>
+    <lastmod>2026-08-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/futsal-zvezda-2-epizoda-miki-kapelo-ostvario-sam-svoj-decacki-san-jos-samo-da-uzmemo-titulu</loc>
+    <lastmod>2026-07-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/milorad-bojic-stigao-u-crvenu-zvezdu</loc>
+    <lastmod>2026-07-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/crvena-zvezda-i-svet-malog-fudbala-zapoceli-saradnju</loc>
+    <lastmod>2026-07-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/kapiten-reprezentacije-srbije-i-golman-orlova-dolaze-iz-crvene-zvezde</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/futsal-zvezda-prva-epizoda-branislav-borojevic</loc>
+    <lastmod>2026-07-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/djuric-lazarevic-i-polic-u-crvenoj-zvezdi</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/crvena-zvezda-se-vratila-tamo-gde-i-pripada</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/mladen-kocic-cipi-u-crvenoj-zvezdi</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/vesti/aleksandar-pavlovic-u-crvenoj-zvezdi</loc>
+    <lastmod>2026-07-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kmfcrvenazvezda.rs/prodavnica</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 </urlset>

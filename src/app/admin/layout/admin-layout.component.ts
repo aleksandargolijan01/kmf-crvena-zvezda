@@ -32,6 +32,16 @@ interface NavItem {
               {{ item.label }}
             </a>
           }
+          @if (auth.user$ | async; as user) {
+            @if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+              <span class="admin-kicker" style="padding: 18px 14px 4px;">ПРОДАВНИЦА</span>
+              @for (item of shopNav; track item.route) {
+                <a [routerLink]="item.route" routerLinkActive="is-active" (click)="sidebarOpen = false">
+                  <span class="nav-icon">{{ item.icon }}</span>{{ item.label }}
+                </a>
+              }
+            }
+          }
         </nav>
       </aside>
 
@@ -70,6 +80,11 @@ interface NavItem {
 })
 export class AdminLayoutComponent {
   sidebarOpen = false;
+  readonly shopNav: NavItem[] = [
+    { label: 'Производи', route: '/admin/shop/products', icon: 'П' },
+    { label: 'Поруџбине', route: '/admin/shop/orders', icon: 'Н' },
+    { label: 'Сезонске карте', route: '/admin/shop/season-tickets', icon: 'К' }
+  ];
   readonly nav: NavItem[] = [
     { label: 'Dashboard', route: '/admin', icon: 'D' },
     { label: 'Vesti', route: '/admin/news', icon: 'N' },

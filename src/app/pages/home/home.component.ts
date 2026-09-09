@@ -1,4 +1,5 @@
 import { Component, DestroyRef, OnInit, computed, signal } from '@angular/core';
+import { ShopCarouselComponent } from '../../shared/shop/shop-carousel.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { combineLatest, map } from 'rxjs';
@@ -18,10 +19,11 @@ import { PublicSponsor, PublicSponsorsService, PublicSponsorsState } from '../..
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, SponsorLogoComponent, ImageFallbackDirective, NewsletterFormComponent],
+  imports: [RouterLink, SponsorLogoComponent, ImageFallbackDirective, NewsletterFormComponent, ShopCarouselComponent],
   templateUrl: './home.component.html'
 })
 export class HomeComponent implements OnInit {
+  showShop = false;
   private readonly leadershipFallback = leadership.slice(0, 4);
   readonly leadershipState = signal<PublicManagementState>({ loading: true, error: false, members: this.leadershipFallback });
   readonly leadership = computed<Leader[]>(() => this.leadershipState().members.slice(0, 4));
@@ -48,12 +50,14 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     const isContactRoute = this.router.url.split('?')[0] === '/kontakt';
+    this.showShop = !isContactRoute;
     this.seo.set({
       title: isContactRoute ? `${this.i18n.t('nav.contact')} | ${this.i18n.t('brand.name')}` : this.i18n.t('seo.home.title'),
       description: isContactRoute ? this.i18n.t('footer.becomeSponsorText') : this.i18n.t('seo.home.description'),
       titleKey: isContactRoute ? undefined : 'seo.home.title',
       descriptionKey: isContactRoute ? 'footer.becomeSponsorText' : 'seo.home.description',
-      path: isContactRoute ? '/kontakt' : '/',
+      path: '/',
+      robots: isContactRoute ? 'noindex, follow' : 'index, follow',
       image: '/images/social-share-default.png',
       schema: [
         this.seo.websiteSchema(),

@@ -1,0 +1,33 @@
+:host { display: block; }
+.admin-page { grid-template-columns: minmax(0, 1fr); }
+.admin-card, .admin-form, .admin-form label { min-width: 0; }
+.admin-form input[type=checkbox] { width: 18px; height: 18px; }
+.switch-row label { display: flex; align-items: center; gap: 8px; }
+fieldset { border: 0; padding: 0; margin: 0 0 24px; min-width: 0; display: grid; gap: 16px; }
+legend { font-size: 12px; font-weight: 800; color: var(--admin-red); padding: 0 0 16px; letter-spacing: .07em; }
+.help, small { color: var(--admin-muted); font-size: 12px; }
+summary { cursor: pointer; font-weight: 700; padding: 12px 0; }
+.shop-table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+th, td { padding: 14px; border-bottom: 1px solid var(--admin-line); }
+th { color: var(--admin-muted); font-size: 12px; }
+tr.is-selected { background: var(--admin-bg); }
+.product-cell, .cover-row, .picker-head { display: flex; align-items: center; gap: 14px; }
+.product-cell { min-width: 180px; }
+.product-cell img { width: 48px; height: 60px; object-fit: contain; }
+.cover-row { flex-wrap: wrap; }
+.cover-row img { width: 100px; height: 120px; object-fit: contain; }
+.gallery-list { display: grid; gap: 12px; }
+.gallery-item { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.gallery-item img { width: 72px; height: 80px; object-fit: contain; }
+.variant-row { display: grid; grid-template-columns: minmax(70px, 1fr) minmax(100px, 1fr) auto auto auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--admin-line); }
+.variant-row .check { display: flex; flex-direction: row; align-items: center; }
+.picker-head { justify-content: space-between; }
+@media (max-width: 1080px) { .variant-row { grid-template-columns: 1fr 1fr; } .variant-row .row-actions { grid-column: 1 / -1; } }
+@media (max-width: 560px) {
+  .gallery-item { grid-template-columns: 64px minmax(0, 1fr); }
+  .gallery-item .row-actions { grid-column: 1 / -1; }
+  .variant-row { grid-template-columns: minmax(0, 1fr); }
+  .admin-button { white-space: normal; padding-block: 10px; }
+  .card-head h2 { font-size: 28px; overflow-wrap: anywhere; }
+}

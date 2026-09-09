@@ -13,6 +13,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const isApiRequest = request.url.startsWith(apiUrl) || request.url.startsWith('/api');
   const isRefresh = request.url.includes('/auth/refresh');
   const isLogin = request.url.includes('/auth/login');
+  const publicShop = request.url.startsWith(`${apiUrl}/shop/`) || request.url.startsWith('/api/shop/');
+  // Guest Shop errors belong to the checkout UI, even in an admin's browser session.
+  if (publicShop) return next(request);
 
   const authorized = token && isApiRequest
     ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
