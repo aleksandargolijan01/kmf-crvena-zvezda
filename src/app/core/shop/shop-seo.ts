@@ -1,5 +1,6 @@
 import type { CatalogProduct } from './public-shop.models';
 import type { SeoConfig } from '../seo/seo.service';
+import { LanguageCode, translations } from '../../i18n/translations';
 export const SHOP_TITLE = 'Продавница КМФ Црвена звезда | Званична колекција';
 export const SHOP_DESCRIPTION = 'Званична продавница КМФ Црвена звезда. Погледајте клупску одећу и званичну колекцију футсал клуба Црвена звезда.';
 export const SHOP_AVAILABILITY = { AVAILABLE: 'https://schema.org/InStock', SOLD_OUT: 'https://schema.org/OutOfStock', MADE_TO_ORDER: 'https://schema.org/MadeToOrder' };
@@ -13,9 +14,9 @@ export function shopPlainText(value: string): string {
     }).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 function description(value: string) { const text = shopPlainText(value); return text.length <= 160 ? text : text.slice(0, 157).trimEnd() + '...'; }
-export function productSeo(product: CatalogProduct, siteUrl: string): SeoConfig {
+export function productSeo(product: CatalogProduct, siteUrl: string, language: LanguageCode = 'sr'): SeoConfig {
   const path = `/prodavnica/${product.slug}`, canonical = new URL(path, siteUrl).href;
-  const name = shopPlainText(product.name.sr), text = description(product.description.sr || name);
+  const name = shopPlainText(product.name[language] || product.name.sr), text = description(product.description[language] || product.description.sr || name);
   const fallback = new URL('/images/logo-kmf-crvena-zvezda.png', siteUrl).href;
   const images = [product.coverImage?.url, ...product.gallery.map(image => image.url)].filter((value): value is string => !!value).map(value => {
     try { const url = new URL(value, siteUrl); return url.protocol === 'https:' && !url.username && !url.password ? url.href : fallback; } catch { return fallback; }
@@ -23,11 +24,11 @@ export function productSeo(product: CatalogProduct, siteUrl: string): SeoConfig 
   const image = [...new Set(images.length ? images : [fallback])];
   const minor = BigInt(product.priceMinor);
   return {
-    title: `${name} | КМФ Црвена звезда`, description: text, path, image: image[0], imageAlt: name, robots: 'index, follow',
+    title: `${name} | ${translations[language]['shop.brand']}`, description: text, path, image: image[0], imageAlt: name, robots: 'index, follow',
     schema: [
       { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Почетна', item: new URL('/', siteUrl).href },
-        { '@type': 'ListItem', position: 2, name: 'Продавница', item: new URL('/prodavnica', siteUrl).href },
+        { '@type': 'ListItem', position: 1, name: translations[language]['nav.home'], item: new URL('/', siteUrl).href },
+        { '@type': 'ListItem', position: 2, name: translations[language]['shop.nav'], item: new URL('/prodavnica', siteUrl).href },
         { '@type': 'ListItem', position: 3, name, item: canonical }
       ] },
       { '@context': 'https://schema.org', '@type': 'Product', name, description: text, image, brand: { '@type': 'Brand', name: 'KMF Crvena zvezda' }, offers: {

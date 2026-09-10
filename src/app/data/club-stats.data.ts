@@ -4,9 +4,9 @@ const lt = (sr: string, en: string, ru: string): LocalizedText => ({ sr, en, ru 
 
 export const clubStats: ClubStat[] = [
   {
-    icon: 'calendar',
-    value: '2008',
-    label: lt('Година оснивања', 'Founded', 'Год основания')
+    icon: 'trophy',
+    value: '1',
+    label: lt('Шампион Србије', 'Serbian champion', 'Чемпион Сербии')
   },
   {
     icon: 'star',
@@ -19,14 +19,14 @@ export const clubStats: ClubStat[] = [
     label: lt('Куп Београда', 'Belgrade Cup', 'Кубок Белграда')
   },
   {
-    icon: 'trophy',
-    value: '1',
-    label: lt('Шампион Србије', 'Serbian champion', 'Чемпион Сербии')
-  },
-  {
     icon: 'supporters',
     value: '1000+',
     label: lt('Навијача', 'Supporters', 'Болельщиков')
+  },
+  {
+    icon: 'calendar',
+    value: '2008',
+    label: lt('Година оснивања', 'Founded', 'Год основания')
   },
   {
     icon: 'club',

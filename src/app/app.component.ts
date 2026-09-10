@@ -6,11 +6,12 @@ import { HeaderComponent } from './layout/header/header.component';
 import { FooterComponent } from './layout/footer/footer.component';
 import { TranslationService } from './i18n/translation.service';
 import { SeoService } from './core/seo/seo.service';
+import { FloatingCartComponent } from './shared/shop/floating-cart.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent, FooterComponent],
+  imports: [RouterOutlet, HeaderComponent, FooterComponent, FloatingCartComponent],
   template: `
     @if (!isAdminRoute) {
       <app-header />
@@ -18,6 +19,7 @@ import { SeoService } from './core/seo/seo.service';
     <router-outlet />
     @if (!isAdminRoute) {
       <app-footer />
+      <app-floating-cart />
       <button
         class="scroll-top"
         [class.is-visible]="showScrollTop"

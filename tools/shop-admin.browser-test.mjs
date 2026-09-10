@@ -29,7 +29,9 @@ const secret = 'local-browser-shop-test-only-secret';
 const jwt = new JwtService({ secret });
 const module = await Test.createTestingModule({
   controllers: [AdminProductsController], providers: [JwtAuthGuard, RolesGuard,
-    { provide: ProductsService, useValue: new ProductsService(db) },
+    { provide: ProductsService, useValue: new ProductsService(db, {
+      translateMissingFieldsWithResult: async ({ fields, source }) => ({ translations: Object.fromEntries(fields.map(field => [field.targetKey, `${field.targetKey.endsWith('_en') ? 'EN' : 'RU'}: ${source[field.sourceKey]}`])), errors: [] })
+    }) },
     { provide: PrismaService, useValue: { user: { findUnique: ({ where }) => ({ id: where.id, role: where.id, isActive: true }) } } },
     { provide: JwtService, useValue: jwt }, { provide: ConfigService, useValue: { getOrThrow: () => secret } }
   ]
@@ -103,7 +105,9 @@ try {
   assert.equal(saved.coverImageId, media.id);
   assert.equal(saved.gallery.length, 1);
   assert.equal(saved.variants[0].size, 'M');
+  assert.equal(saved.nameEn, `EN: ${name}`); assert.equal(saved.nameRu, `RU: ${name}`);
   const variantId = saved.variants[0].id;
+  const originalSlug = saved.slug;
   await page.getByLabel(/^Цена у динарима \*/).fill('3300,25');
   await page.getByRole('checkbox', { name: 'Доступно', exact: true }).uncheck();
   const update = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(saved.id));
@@ -113,6 +117,26 @@ try {
   assert.equal(saved.priceMinor, 330025);
   assert.equal(saved.variants[0].id, variantId);
   assert.equal(saved.variants[0].available, false);
+  await page.getByText('Преводи — опционо', { exact: true }).click();
+  await page.getByLabel('Назив *', { exact: true }).fill(name + ' ново');
+  await page.getByLabel('Назив на енглеском', { exact: true }).fill('Custom English shirt');
+  const translatedUpdate = page.waitForResponse(response => response.request().method() === 'PATCH' && response.url().includes(saved.id));
+  await page.getByRole('button', { name: 'Сачувај производ', exact: true }).click();
+  const translatedResponse = await translatedUpdate;
+  assert.equal(translatedResponse.status(), 200);
+  const payload = translatedResponse.request().postDataJSON();
+  assert.equal(payload.nameEn, 'Custom English shirt'); assert.equal(Object.hasOwn(payload, 'nameRu'), false);
+  assert.equal(Object.hasOwn(payload, 'descriptionEn'), false); assert.equal(Object.hasOwn(payload, 'descriptionRu'), false);
+  saved = await db.product.findUniqueOrThrow({ where: { id: saved.id }, include: { variants: true } });
+  assert.equal(saved.nameEn, 'Custom English shirt'); assert.equal(saved.nameRu, `RU: ${name} ново`);
+  assert.equal(saved.slug, originalSlug); assert.equal(saved.priceMinor, 330025); assert.equal(saved.variants[0].id, variantId);
+  await page.getByRole('button', { name: 'Допуни / исправи EN/RU', exact: true }).click();
+  await page.getByText('Нема превода за допуну.', { exact: true }).waitFor();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Поново преведи сва EN/RU поља', exact: true }).click();
+  await page.getByText('Преводи су обновљени.', { exact: true }).waitFor();
+  saved = await db.product.findUniqueOrThrow({ where: { id: saved.id }, include: { variants: true } });
+  assert.equal(saved.nameEn, `EN: ${name} ново`); assert.equal(saved.priceMinor, 330025); assert.equal(saved.variants[0].id, variantId);
   const artifactDir = process.env.SHOP_TEST_ARTIFACT_DIR;
   if (artifactDir) { await mkdir(artifactDir, { recursive: true }); await page.screenshot({ path: path.join(artifactDir, 'shop-desktop.png'), fullPage: true }); }
   await page.setViewportSize({ width: 390, height: 844 });

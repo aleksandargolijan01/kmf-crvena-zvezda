@@ -6,13 +6,10 @@ import { combineLatest, map } from 'rxjs';
 import { clubStats } from '../../data/club-stats.data';
 import { galleryImages } from '../../data/gallery.data';
 import { SponsorLogoComponent } from '../../shared/sponsor-logo/sponsor-logo.component';
-import { leadership } from '../../data/leadership.data';
-import { Leader } from '../../data/site.models';
 import { TranslationService } from '../../i18n/translation.service';
 import { SeoService } from '../../core/seo/seo.service';
 import { ImageFallbackDirective } from '../../shared/image-fallback.directive';
 import { PublicNewsResult, PublicNewsService } from '../../core/api/public-news.service';
-import { PublicManagementService, PublicManagementState } from '../../core/api/public-management.service';
 import { NewsletterFormComponent } from '../../shared/newsletter-form/newsletter-form.component';
 import { PublicSponsor, PublicSponsorsService, PublicSponsorsState } from '../../core/api/public-sponsors.service';
 
@@ -20,13 +17,25 @@ import { PublicSponsor, PublicSponsorsService, PublicSponsorsState } from '../..
   selector: 'app-home',
   standalone: true,
   imports: [RouterLink, SponsorLogoComponent, ImageFallbackDirective, NewsletterFormComponent, ShopCarouselComponent],
-  templateUrl: './home.component.html'
+  templateUrl: './home.component.html',
+  styles: [`
+    .leadership-section { padding-block: 56px; }
+    .leadership-section .section-heading { margin-bottom: 0; gap: 18px; }
+    .leadership-section h2 { max-width: 24ch; margin: 0; }
+    .leadership-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+    .leadership-actions .btn { max-width: 100%; min-height: 46px; text-align: center; }
+    .leadership-actions .btn-outline { color: var(--red); background: white; border-color: var(--red); box-shadow: none; }
+    .leadership-actions .btn-outline:hover { color: white; background: var(--red); }
+    .leadership-actions .btn:focus-visible { outline: 3px solid var(--red); outline-offset: 4px; }
+    @media (max-width: 720px) {
+      .leadership-section { padding-block: 40px; }
+      .leadership-actions { width: 100%; }
+      .leadership-actions .btn { flex: 1 1 230px; }
+    }
+  `]
 })
 export class HomeComponent implements OnInit {
   showShop = false;
-  private readonly leadershipFallback = leadership.slice(0, 4);
-  readonly leadershipState = signal<PublicManagementState>({ loading: true, error: false, members: this.leadershipFallback });
-  readonly leadership = computed<Leader[]>(() => this.leadershipState().members.slice(0, 4));
   readonly newsState = signal<PublicNewsResult>({ loading: true, error: false, items: [], total: 0 });
   readonly sponsorsState = signal<PublicSponsorsState>({ loading: true, error: false, categories: [] });
   readonly publicSponsors = computed<PublicSponsor[]>(() => this.sponsorsState().categories.flatMap((category) => category.sponsors));
@@ -43,7 +52,6 @@ export class HomeComponent implements OnInit {
     private readonly seo: SeoService,
     private readonly router: Router,
     private readonly publicNews: PublicNewsService,
-    private readonly publicManagement: PublicManagementService,
     private readonly publicSponsorsService: PublicSponsorsService,
     private readonly destroyRef: DestroyRef
   ) {}
@@ -89,8 +97,5 @@ export class HomeComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((state) => this.sponsorsState.set(state));
 
-    this.publicManagement.managementState(this.leadershipFallback)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((state) => this.leadershipState.set(state));
   }
 }

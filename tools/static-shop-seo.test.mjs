@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
+import { moduleUrl } from './typescript-test-loader.mjs';
 import { activeProducts, appendShopSitemap, fetchActiveProducts } from './static-shop-seo.mjs';
 import { createSitemapXml } from './static-news-seo.mjs';
-const source = await readFile(new URL('../src/app/core/shop/shop-seo.ts', import.meta.url), 'utf8');
-const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { productSeo, SHOP_TITLE, SHOP_DESCRIPTION } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));
+const { productSeo, SHOP_TITLE, SHOP_DESCRIPTION } = await import(await moduleUrl(new URL('../src/app/core/shop/shop-seo.ts', import.meta.url)));
 const site = 'https://kmfcrvenazvezda.rs';
 const product = { slug: 'test-majica', active: true, name: { sr: 'Клупска мајица' }, description: { sr: '<p>Памучна одећа &amp; опрема.</p>' }, priceMinor: 320050, availability: 'AVAILABLE', coverImage: { url: '/images/test.jpg' }, gallery: [] };
 test('public catalog has exact requested indexable metadata', async () => {

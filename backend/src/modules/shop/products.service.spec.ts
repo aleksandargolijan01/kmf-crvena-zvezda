@@ -1,3 +1,4 @@
+import { TranslationService } from '../translation/translation.service';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma, ProductAvailability } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
@@ -26,7 +27,7 @@ describe('ProductsService', () => {
       $queryRaw: jest.fn().mockResolvedValue([]),
     };
     db.$transaction = jest.fn((operation) => typeof operation === 'function' ? operation(db) : Promise.all(operation));
-    service = new ProductsService(db as PrismaService);
+    service = new ProductsService(db as PrismaService, { translateMissingFieldsWithResult: jest.fn().mockResolvedValue({ translations: {}, errors: [] }) } as unknown as TranslationService);
   });
 
   it('disables deletion when only a variant is linked to an order snapshot', async () => {

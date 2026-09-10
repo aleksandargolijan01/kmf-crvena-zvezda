@@ -5,6 +5,7 @@ import ts from 'typescript';
 import '@angular/compiler';
 import { createEnvironmentInjector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { DefaultUrlSerializer } from '@angular/router';
 import { of, throwError, Subject } from 'rxjs';
 
 // Load the actual TypeScript services with real Angular signals/injection; no signal mocks.
@@ -22,6 +23,22 @@ async function moduleUrl(url) {
   return value;
 }
 const root = new URL('../', import.meta.url);
+const { shopRouteContext } = await import(await moduleUrl(new URL('src/app/core/shop/shop-route.service.ts', root)));
+const { cartGrew } = await import(await moduleUrl(new URL('src/app/core/shop/cart-presentation.service.ts', root)));
+test('Shop context uses URL segments and ignores query, fragment and matrix parameters', () => {
+  const parser = new DefaultUrlSerializer();
+  for (const url of ['/prodavnica', '/prodavnica/majica?size=M#gallery', '/korpa/', '/korpa;view=compact', '/porudzbina', '/porudzbina/uspesno']) assert.equal(shopRouteContext(parser.parse(url)), 'shop', url);
+  for (const url of ['/', '/vesti', '/tim', '/uprava', '/prodavnica-extra', '/korpa/nepoznato', '/porudzbina/nepoznato', '/vesti?next=/korpa']) assert.equal(shopRouteContext(parser.parse(url)), 'public', url);
+  assert.equal(shopRouteContext(parser.parse('/admin/shop/products')), 'admin');
+});
+test('dismiss reset detects additions and quantity increases, not removals or unchanged hydration', () => {
+  const old = [{ variantId: 'v1', quantity: 2 }];
+  assert.equal(cartGrew(old, structuredClone(old)), false);
+  assert.equal(cartGrew(old, []), false);
+  assert.equal(cartGrew(old, [{ variantId: 'v1', quantity: 1 }]), false);
+  assert.equal(cartGrew(old, [{ variantId: 'v1', quantity: 3 }]), true);
+  assert.equal(cartGrew(old, [...old, { variantId: 'v2', quantity: 1 }]), true);
+});
 const { CartService } = await import(await moduleUrl(new URL('src/app/core/shop/cart.service.ts', root)));
 const { PublicShopApiService } = await import(await moduleUrl(new URL('src/app/core/api/public-shop-api.service.ts', root)));
 const { productBadge, featuredProducts, formatShopPrice, CART_KEY } = await import(await moduleUrl(new URL('src/app/core/shop/public-shop.models.ts', root)));
@@ -103,7 +120,7 @@ test('deactivated products, removed variants and sold out items remain removable
 test('fresh API prices replace prior prices with integer totals', async () => {
   const t = setup(); t.cart.add(product(), 'v1', 3);
   t.api.catalog = () => of([product({ priceMinor: 320050 })]);
-  await t.cart.refresh(); assert.equal(t.cart.totalMinor(), 960150); assert.match(t.cart.notice(), /Цена је промењена/); t.close();
+  await t.cart.refresh(); assert.equal(t.cart.totalMinor(), 960150); assert.equal(t.cart.notice(), 'shop.cartPriceChanged'); t.close();
 });
 test('refresh failure preserves saved choices but hides totals; retry recovers', async () => {
   const t = setup(); t.cart.add(product(), 'v1', 1); t.api.catalog = () => throwError(() => new Error('offline'));

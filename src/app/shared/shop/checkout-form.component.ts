@@ -1,3 +1,5 @@
+import { TranslationKey } from '../../i18n/translations';
+import { TranslationService } from '../../i18n/translation.service';
 import { ChangeDetectorRef, Component, DestroyRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -7,10 +9,11 @@ import { PublicShopApiService } from '../../core/api/public-shop-api.service';
 import { CartService } from '../../core/shop/cart.service';
 import { CheckoutSessionService } from '../../core/shop/checkout-session.service';
 import { CartEntry, CatalogProduct, formatShopPrice } from '../../core/shop/public-shop.models';
-import { OrderSource, Quote, Receipt, checkoutError, orderSourceLabels } from '../../core/shop/checkout.models';
+import { OrderSource, Quote, Receipt, checkoutErrorKey, orderSourceKeys } from '../../core/shop/checkout.models';
 
 @Component({ selector: 'app-checkout-form', standalone: true, imports: [ReactiveFormsModule, RouterLink], templateUrl: './checkout-form.component.html', styleUrl: './checkout-form.component.scss' })
 export class CheckoutFormComponent {
+  readonly i18n = inject(TranslationService);
   readonly manual = input(false);
   readonly cart = inject(CartService);
   private readonly api = inject(CheckoutApiService);
@@ -25,18 +28,18 @@ export class CheckoutFormComponent {
   readonly recovering = signal(false);
   readonly uncertain = signal(false);
   readonly loading = signal(false);
-  readonly error = signal('');
+  readonly error = signal<TranslationKey | ''>('');
   readonly quote = signal<Quote | null>(null);
   readonly now = signal(Date.now());
   readonly ticketEnabled = signal(false);
   readonly ticketToken = signal<string | undefined>(undefined);
   readonly ticketBusy = signal(false);
-  readonly ticketError = signal('');
+  readonly ticketError = signal<TranslationKey | ''>('');
   readonly products = signal<CatalogProduct[]>([]);
   readonly manualItems = signal<CartEntry[]>([]);
   readonly items = computed(() => this.manual() ? this.manualItems() : this.cart.items());
   readonly money = formatShopPrice;
-  readonly sources = (['INSTAGRAM', 'PHONE', 'IN_PERSON', 'ADMIN'] as const).map(value => ({ value, label: orderSourceLabels[value] }));
+  readonly sources = (['INSTAGRAM', 'PHONE', 'IN_PERSON', 'ADMIN'] as const).map(value => ({ value, label: orderSourceKeys[value] }));
   readonly source = this.fb.control<OrderSource>('ADMIN');
   readonly selection = this.fb.group({ variantId: ['', Validators.required], quantity: [1, [Validators.required, Validators.min(1), Validators.max(99), Validators.pattern(/^\d+$/)]] });
   readonly customer = this.fb.group({
@@ -51,13 +54,13 @@ export class CheckoutFormComponent {
   });
   readonly ticket = this.fb.group({ cardNumber: ['', [Validators.required, Validators.maxLength(100)]], verificationValue: ['', [Validators.required, Validators.maxLength(120)]] });
   readonly fields = [
-    { key: 'firstName', label: 'Име', type: 'text', autocomplete: 'given-name', max: 100 },
-    { key: 'lastName', label: 'Презиме', type: 'text', autocomplete: 'family-name', max: 100 },
-    { key: 'phone', label: 'Телефон', type: 'tel', autocomplete: 'tel', max: 25 },
-    { key: 'email', label: 'Имејл адреса', type: 'email', autocomplete: 'email', max: 254 },
-    { key: 'address', label: 'Адреса и број', type: 'text', autocomplete: 'street-address', max: 250 },
-    { key: 'city', label: 'Град', type: 'text', autocomplete: 'address-level2', max: 100 },
-    { key: 'postalCode', label: 'Поштански број', type: 'text', autocomplete: 'postal-code', max: 5 }
+    { key: 'firstName', label: 'shop.firstName', type: 'text', autocomplete: 'given-name', max: 100 },
+    { key: 'lastName', label: 'shop.lastName', type: 'text', autocomplete: 'family-name', max: 100 },
+    { key: 'phone', label: 'shop.phone', type: 'tel', autocomplete: 'tel', max: 25 },
+    { key: 'email', label: 'shop.email', type: 'email', autocomplete: 'email', max: 254 },
+    { key: 'address', label: 'shop.address', type: 'text', autocomplete: 'street-address', max: 250 },
+    { key: 'city', label: 'shop.city', type: 'text', autocomplete: 'address-level2', max: 100 },
+    { key: 'postalCode', label: 'shop.postalCode', type: 'text', autocomplete: 'postal-code', max: 5 }
   ] as const;
   constructor() {
     const destroy = inject(DestroyRef);
@@ -79,10 +82,9 @@ export class CheckoutFormComponent {
   }
   private async initialize() {
     await this.recover();
-    if (this.manual()) {
-      try { this.products.set(await firstValueFrom(this.catalogApi.catalog())); }
-      catch { this.error.set('Понуда није учитана. Освежите страницу и покушајте поново.'); }
-    }
+    // Public names are presentation only; quote prices and order snapshots remain authoritative.
+    try { this.products.set(await firstValueFrom(this.catalogApi.catalog())); }
+    catch { if (this.manual()) this.error.set('shop.catalogLoadFailed'); }
     this.ready.set(true);
   }
   async recover() {
@@ -93,7 +95,7 @@ export class CheckoutFormComponent {
       const receipt = await firstValueFrom(this.api.recover(key));
       this.uncertain.set(false);
       if (receipt.found) this.finish(receipt);
-    } catch { this.uncertain.set(true); this.error.set('Потврда претходног покушаја није доступна. Проверите исход пре поновног слања.'); }
+    } catch { this.uncertain.set(true); this.error.set('shop.recoveryFailed'); }
     finally { this.recovering.set(false); }
   }
   async refreshQuote(items = this.items(), enabled = this.ticketEnabled(), token = this.ticketToken()) {
@@ -104,7 +106,7 @@ export class CheckoutFormComponent {
     try {
       const quote = await firstValueFrom(this.api.quote(items, enabled ? token : undefined));
       if (version === this.version) this.quote.set(quote);
-    } catch (error) { if (version === this.version) this.error.set(checkoutError(error)); }
+    } catch (error) { if (version === this.version) this.error.set(checkoutErrorKey(error)); }
     finally { if (version === this.version) this.loading.set(false); }
   }
   toggleTicket(enabled: boolean) { this.ticketEnabled.set(enabled); this.ticketToken.set(undefined); this.ticketError.set(''); this.ticket.reset(); }
@@ -116,20 +118,24 @@ export class CheckoutFormComponent {
       const result = await firstValueFrom(this.api.validateTicket(value.cardNumber.trim(), value.verificationValue.trim()));
       this.ticket.controls.verificationValue.reset('', { emitEvent: false });
       this.ticketToken.set(result.seasonTicketToken);
-    } catch (error) { this.ticketToken.set(undefined); this.ticketError.set(checkoutError(error)); }
+    } catch (error) { this.ticketToken.set(undefined); this.ticketError.set(checkoutErrorKey(error)); }
     finally { this.ticketBusy.set(false); }
   }
   addItem() {
     if (this.selection.invalid) return;
     const { variantId, quantity } = this.selection.getRawValue();
     const old = this.manualItems().find(item => item.variantId === variantId);
-    if ((old?.quantity ?? 0) + quantity > 99 || !old && this.manualItems().length >= 100) { this.error.set('Највише 99 комада по величини и 100 ставки.'); return; }
+    if ((old?.quantity ?? 0) + quantity > 99 || !old && this.manualItems().length >= 100) { this.error.set('shop.itemLimit'); return; }
     this.manualItems.update(items => old ? items.map(item => item.variantId === variantId ? { ...item, quantity: item.quantity + quantity } : item) : [...items, { variantId, quantity }]);
   }
   removeItem(id: string) { this.manualItems.update(items => items.filter(item => item.variantId !== id)); }
   itemName(id: string) {
     const product = this.products().find(product => product.variants.some(variant => variant.id === id));
-    return product ? `${product.name.sr} — ${product.variants.find(variant => variant.id === id)?.size}` : 'Артикал';
+    return product ? `${this.i18n.text(product.name)} — ${product.variants.find(variant => variant.id === id)?.size}` : this.i18n.t('shop.item');
+  }
+  quoteItemName(item: Quote['items'][number]) {
+    const product = this.products().find(product => product.id === item.productId);
+    return product ? this.i18n.text(product.name) : item.productName;
   }
   get expired() { return !this.quote() || this.now() >= Date.parse(this.quote()!.expiresAt); }
   get canSubmit() { return this.customerValid() && !this.expired && !this.busy() && !this.loading() && !this.recovering() && !this.uncertain() && this.items().length > 0 && (!this.ticketEnabled() || !!this.ticketToken()); }
@@ -147,7 +153,7 @@ export class CheckoutFormComponent {
       this.finish(receipt);
     } catch (error) {
       const response = error as { status?: number; error?: { code?: string; quote?: Quote } };
-      this.error.set(checkoutError(error));
+      this.error.set(checkoutErrorKey(error));
       if (response.error?.code === 'PRICE_CHANGED' && response.error.quote) this.quote.set(response.error.quote);
       else if (response.error?.code === 'SEASON_TICKET_INVALID') { this.ticketToken.set(undefined); this.quote.set(null); }
       else if (['QUOTE_EXPIRED', 'VARIANT_UNAVAILABLE', 'PRODUCT_UNAVAILABLE'].includes(response.error?.code ?? '')) this.quote.set(null);

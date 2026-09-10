@@ -1,3 +1,4 @@
+import { TranslationService } from '../../i18n/translation.service';
 import { Component, DestroyRef, afterNextRender, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CartService } from '../../core/shop/cart.service';
@@ -10,11 +11,12 @@ import { QuantitySelectorComponent } from '../../shared/shop/quantity-selector.c
   standalone: true, imports: [RouterLink, ImageFallbackDirective, QuantitySelectorComponent], templateUrl: './cart-page.component.html', styleUrl: './shop.scss'
 })
 export class CartPageComponent {
+  readonly i18n = inject(TranslationService);
   readonly cart = inject(CartService);
   readonly money = formatShopPrice;
   private readonly destroyRef = inject(DestroyRef);
   constructor() {
-    inject(SeoService).set({ title: 'Корпа | КМФ Црвена звезда', description: 'Ваша корпа званичне клупске продавнице.', path: '/korpa', robots: 'noindex, nofollow', schema: [] });
+    inject(SeoService).set({ title: '', description: '', titleKey: 'shop.cartTitle', descriptionKey: 'shop.cartDescription', path: '/korpa', robots: 'noindex, nofollow', schema: [] });
     afterNextRender(() => {
       void this.cart.refresh();
       const refresh = () => { if (!document.hidden) void this.cart.refresh(); };

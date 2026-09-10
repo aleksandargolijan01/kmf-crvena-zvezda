@@ -150,19 +150,10 @@
     <div class="section-heading">
       <p class="eyebrow">{{ i18n.t('home.leadership.eyebrow') }}</p>
       <h2>{{ i18n.t('home.leadership.title') }}</h2>
-      <a class="btn btn-primary" routerLink="/uprava">{{ i18n.t('home.leadership.cta') }}</a>
-    </div>
-    <div class="card-grid leadership-grid">
-      @for (leader of leadership(); track leader.name) {
-        <article class="person-card glow-card">
-          <img appImageFallback [src]="leader.image" [alt]="leader.name" width="480" height="560" loading="lazy" decoding="async" />
-          <div>
-            <p class="role">{{ i18n.text(leader.role) }}</p>
-            <h3>{{ leader.name }}</h3>
-            <p>{{ i18n.text(leader.description) }}</p>
-          </div>
-        </article>
-      }
+      <div class="leadership-actions" lang="sr-Cyrl">
+        <a class="btn btn-primary" routerLink="/uprava">ПОГЛЕДАЈ УПРАВУ</a>
+        <a class="btn btn-outline" routerLink="/upravni-odbor">УПРАВНИ ОДБОР</a>
+      </div>
     </div>
   </section>
 

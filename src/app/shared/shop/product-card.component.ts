@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { TranslationService } from '../../i18n/translation.service';
+import { inject, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ImageFallbackDirective } from '../image-fallback.directive';
 import { CatalogProduct, formatShopPrice, productBadge } from '../../core/shop/public-shop.models';
@@ -6,13 +7,13 @@ import { CatalogProduct, formatShopPrice, productBadge } from '../../core/shop/p
 @Component({
   selector: 'app-product-card', standalone: true, imports: [RouterLink, ImageFallbackDirective],
   template: `
-    <article class="product-card" [class.sold-out]="product().availability === 'SOLD_OUT'" lang="sr-Cyrl">
+    <article class="product-card" [class.sold-out]="product().availability === 'SOLD_OUT'">
       <a [routerLink]="['/prodavnica', product().slug]">
         <div class="product-photo">
-          <img appImageFallback [src]="product().coverImage?.url || '/images/logo-kmf-crvena-zvezda.png'" [alt]="product().name.sr" width="640" height="800" loading="lazy" decoding="async" />
+          <img appImageFallback="/images/logo-kmf-crvena-zvezda.png" [src]="product().coverImage?.url || product().gallery[0]?.url || '/images/logo-kmf-crvena-zvezda.png'" [alt]="i18n.text(product().name)" width="640" height="800" loading="lazy" decoding="async" />
           @if (badge(); as label) { <span class="product-badge">{{ label }}</span> }
         </div>
-        <div class="product-copy"><h3>{{ product().name.sr }}</h3><p>{{ money(product().priceMinor) }}</p><span class="product-link">ПОГЛЕДАЈ ПРОИЗВОД <span aria-hidden="true">→</span></span></div>
+        <div class="product-copy"><h3>{{ i18n.text(product().name) }}</h3><p>{{ money(product().priceMinor) }}</p><span class="product-link">{{ i18n.t('shop.viewProduct') }} <span aria-hidden="true">→</span></span></div>
       </a>
     </article>
   `,
@@ -35,7 +36,8 @@ import { CatalogProduct, formatShopPrice, productBadge } from '../../core/shop/p
   `]
 })
 export class ProductCardComponent {
+  readonly i18n = inject(TranslationService);
   readonly product = input.required<CatalogProduct>();
-  readonly badge = computed(() => productBadge(this.product()));
+  readonly badge = computed(() => productBadge(this.product(), this.i18n.currentLanguage()));
   readonly money = formatShopPrice;
 }

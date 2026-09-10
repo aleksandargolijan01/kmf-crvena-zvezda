@@ -17,6 +17,7 @@ describe('Shop HTTP auth and role protection', () => {
     findAdmin: jest.fn().mockResolvedValue({ data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } }),
     findAdminById: jest.fn().mockResolvedValue({ id: 'p' }), create: jest.fn().mockResolvedValue({ id: 'p' }),
     update: jest.fn().mockResolvedValue({ id: 'p' }), remove: jest.fn().mockResolvedValue({ success: true }),
+    regenerateTranslations: jest.fn().mockResolvedValue({ product: { id: 'p' }, translatedFields: [], errors: [] }),
     findPublic: jest.fn().mockResolvedValue({ data: [] }), findPublicBySlug: jest.fn().mockResolvedValue({ slug: 'majica' }),
   };
   beforeAll(async () => {
@@ -40,16 +41,20 @@ describe('Shop HTTP auth and role protection', () => {
     await request(app.getHttpServer()).get('/admin/shop/products/p').auth(token, { type: 'bearer' }).expect(200);
     await request(app.getHttpServer()).post('/admin/shop/products').auth(token, { type: 'bearer' }).send({ nameSr: 'Мајица', descriptionSr: 'Опис', priceMinor: 320000 }).expect(201);
     await request(app.getHttpServer()).patch('/admin/shop/products/p').auth(token, { type: 'bearer' }).send({ active: false }).expect(200);
+    await request(app.getHttpServer()).post('/admin/shop/products/p/translations/regenerate').auth(token, { type: 'bearer' }).send({ force: false }).expect(201);
+    await request(app.getHttpServer()).post('/admin/shop/products/p/translations/regenerate').auth(token, { type: 'bearer' }).send({ force: 'true' }).expect(400);
     await request(app.getHttpServer()).delete('/admin/shop/products/p').auth(token, { type: 'bearer' }).expect(200);
   });
   it('denies EDITOR for reads and all writes', async () => {
     const token = jwt.sign({ sub: 'EDITOR', type: 'access' });
+    await request(app.getHttpServer()).post('/admin/shop/products/p/translations/regenerate').auth(token, { type: 'bearer' }).send({ force: true }).expect(403);
     for (const method of ['get', 'post', 'patch', 'delete'] as const) {
       const path = ['patch', 'delete'].includes(method) ? '/admin/shop/products/p' : '/admin/shop/products';
       await request(app.getHttpServer())[method](path).auth(token, { type: 'bearer' }).expect(403);
     }
   });
   it('rejects unauthenticated, inactive, expired and refresh tokens', async () => {
+    await request(app.getHttpServer()).post('/admin/shop/products/p/translations/regenerate').send({}).expect(401);
     await request(app.getHttpServer()).get('/admin/shop/products').expect(401);
     for (const token of [jwt.sign({ sub: 'INACTIVE', type: 'access' }), jwt.sign({ sub: 'ADMIN', type: 'refresh' }), jwt.sign({ sub: 'ADMIN', type: 'access' }, { expiresIn: -1 })]) {
       await request(app.getHttpServer()).get('/admin/shop/products').auth(token, { type: 'bearer' }).expect(401);

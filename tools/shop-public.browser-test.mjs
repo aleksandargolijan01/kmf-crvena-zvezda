@@ -45,14 +45,20 @@ const screenshot = async (page, label, locator) => {
 try {
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   for (const width of [1440, 768, 390]) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
+    const context = await browser.newContext({ viewport: { width, height: 1000 }, hasTouch: width <= 768, reducedMotion: 'reduce' });
     context.setDefaultTimeout(12000);
     let currentProducts = structuredClone(products);
     let emptyFeatured = false;
     let failCatalog = false;
     let catalogRequests = 0;
+    let managementRequests = 0;
     await context.route('**/*', (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/management') || url.pathname.endsWith('/board-members')) {
+        managementRequests++;
+        const board = url.pathname.endsWith('/board-members');
+        return route.fulfill({ json: [{ id: board ? 'board-test' : 'management-test', fullName: board ? 'Тест члан одбора' : 'Тест члан управе', role_sr: 'Члан', bio_sr: 'Опис члана', imageUrl: `${base}/images/logo-kmf-crvena-zvezda.png` }] });
+      }
       if (url.pathname === '/shop/products') {
         catalogRequests++;
         if (failCatalog) return route.fulfill({ status: 503, json: {} });
@@ -73,24 +79,151 @@ try {
     const errors = []; page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(base);
     await page.locator('.shop-home').waitFor();
+    const leadershipPreview = page.locator('#uprava');
+    assert.equal(await leadershipPreview.locator('.person-card, img, .leadership-grid').count(), 0, 'homepage has no management cards or photos');
+    assert.equal(managementRequests, 0, 'homepage does not fetch management/board members');
+    assert.match(await leadershipPreview.locator('h2').innerText(), /ОЗБИЉАН СИСТЕМ ИЗА СВАКОГ РЕЗУЛТАТА\./);
+    assert.equal(await leadershipPreview.locator('a').count(), 2);
+    const managementLink = leadershipPreview.getByRole('link', { name: /^ПОГЛЕДАЈ УПРАВУ/ });
+    const boardLink = leadershipPreview.getByRole('link', { name: /^УПРАВНИ ОДБОР/ });
+    assert.equal(await managementLink.getAttribute('href'), '/uprava');
+    assert.equal(await boardLink.getAttribute('href'), '/upravni-odbor');
+    await leadershipPreview.scrollIntoViewIfNeeded();
+    const primaryBox = await managementLink.boundingBox(), secondaryBox = await boardLink.boundingBox();
+    assert.ok(primaryBox.width > 0 && secondaryBox.height >= 44);
+    if (width >= 768) assert.ok(Math.abs(primaryBox.y - secondaryBox.y) < 1, 'desktop/tablet CTA row');
+    else assert.ok(secondaryBox.y >= primaryBox.y + primaryBox.height, 'mobile CTA stack');
+    assert.equal(await leadershipPreview.evaluate(el => {
+      const section = el.getBoundingClientRect();
+      const actions = el.querySelector('.leadership-actions').getBoundingClientRect();
+      const next = el.nextElementSibling.getBoundingClientRect();
+      return section.bottom - actions.bottom <= 60 && Math.abs(next.top - section.bottom) < 1
+        && [...el.querySelectorAll('h2, a')].every(child => { const box = child.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth; });
+    }), true, 'compact section with no blank card space or horizontal overflow');
+    assert.equal(await leadershipPreview.evaluate(el => el.previousElementSibling.tagName === 'APP-SHOP-CAROUSEL' && el.nextElementSibling.id === 'prijatelji'), true);
+    await page.keyboard.press('Tab');
+    await boardLink.focus();
+    assert.equal(await boardLink.evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
+    await screenshot(page, `leadership-preview-${width}`, leadershipPreview);
+    await boardLink.press('Enter');
+    await page.waitForURL('**/upravni-odbor');
+    await page.locator('app-board-page .person-card h3').filter({ hasText: 'Тест члан одбора' }).waitFor();
+    assert.equal(await page.locator('app-board-page .person-card img').count(), 1);
+    await page.goBack();
+    await page.locator('#uprava a[href="/uprava"]').click();
+    await page.waitForURL('**/uprava');
+    await page.locator('app-leadership-page .person-card h3').filter({ hasText: 'Тест члан управе' }).waitFor();
+    assert.equal(await page.locator('app-leadership-page .person-card img').count(), 1);
+    await page.goBack();
+    await page.locator('.shop-home').waitFor();
     assert.equal(await page.locator('app-shop-carousel').evaluate((el) => el.previousElementSibling.id === 'klub' && el.nextElementSibling.id === 'uprava'), true);
     assert.equal(await page.locator('.shop-track app-product-card').count(), 4);
     assert.equal(await page.locator('.shop-track h3').first().innerText(), names[3].toUpperCase());
+    assert.equal(await page.locator('.shop-track app-product-card a').first().getAttribute('href'), '/prodavnica/proizvod-4');
+    assert.match(await page.locator('.shop-track .product-copy p').first().innerText(), /3\.500 RSD/);
+    assert.equal(await page.locator('.shop-track img').first().getAttribute('src'), products[3].coverImage.url);
     const track = page.locator('.shop-track');
     await page.getByRole('button', { name: 'Следећи производи', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.shop-track').scrollLeft > 10);
     await screenshot(page, `carousel-${width}`, page.locator('.shop-home'));
+    assert.equal(await track.evaluate(el => getComputedStyle(el).scrollbarWidth), 'none');
+    assert.equal(await track.evaluate(el => getComputedStyle(el, '::-webkit-scrollbar').display), 'none');
+    const scrollBefore = await track.evaluate(el => el.scrollLeft);
+    const trackBox = await track.boundingBox();
+    if (width <= 768) {
+      const swipe = await context.newCDPSession(page);
+      const x = trackBox.x + trackBox.width * .8, y = Math.max(100, trackBox.y + 170);
+      await swipe.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+      for (let step = 1; step <= 6; step++) await swipe.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * trackBox.width / 10, y, id: 1 }] });
+      await swipe.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await swipe.detach();
+    } else {
+      await page.mouse.move(trackBox.x + 100, trackBox.y + 170);
+      await page.mouse.wheel(400, 0);
+    }
+    await page.waitForFunction(before => document.querySelector('.shop-track').scrollLeft > before + 10, scrollBefore);
+    const promo = page.locator('.collection-card');
+    await promo.scrollIntoViewIfNeeded();
+    assert.equal(await promo.evaluate(el => el === el.parentElement.lastElementChild), true);
+    assert.equal(await promo.getAttribute('href'), '/prodavnica');
+    assert.equal(await promo.locator('a, button').count(), 0, 'no nested interactive controls');
+    assert.equal(await promo.locator('img').getAttribute('alt'), '');
+    assert.equal(await promo.locator('img').getAttribute('aria-hidden'), 'true');
+    assert.match(await promo.innerText(), /НОСИ ЗВЕЗДУ\.\s+БУДИ ДЕО КЛУБА\./);
+    assert.equal(await promo.locator('h3').evaluate(el => getComputedStyle(el).color), 'rgb(255, 255, 255)', 'heading contrast overrides global dark headings');
+    assert.equal(await promo.evaluate(el => {
+      const card = el.getBoundingClientRect();
+      return [...el.querySelectorAll('h3, p, .collection-action')].every(child => {
+        const box = child.getBoundingClientRect();
+        return box.left >= card.left + 20 && box.right <= card.right - 20 && box.bottom <= card.bottom - 20 && child.scrollWidth <= child.clientWidth + 1;
+      });
+    }), true, 'promo text and CTA fit inside the card');
+    assert.ok((await promo.locator('.collection-action').boundingBox()).height >= 44);
+    assert.ok(await promo.locator('img').evaluate(el => parseFloat(getComputedStyle(el).transitionDuration) <= .001), 'reduced motion');
+    await page.keyboard.press('Tab');
+    await promo.focus();
+    assert.equal(await promo.evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
+    await track.evaluate(el => el.scrollTo({ left: el.scrollWidth, behavior: 'instant' }));
+    await page.waitForFunction(() => {
+      const card = document.querySelector('.collection-card').getBoundingClientRect();
+      const track = document.querySelector('.shop-track').getBoundingClientRect();
+      return card.left >= track.left - 1 && card.right <= track.right + 1;
+    });
+    // Wait for touch momentum/scroll-snap to settle before capturing the promo.
+    await track.evaluate(el => new Promise(resolve => {
+      let last = el.scrollLeft, stable = 0;
+      const settle = () => {
+        stable = Math.abs(el.scrollLeft - last) < .1 ? stable + 1 : 0;
+        last = el.scrollLeft;
+        if (stable >= 12) resolve(); else requestAnimationFrame(settle);
+      };
+      requestAnimationFrame(settle);
+    }));
+    await promo.scrollIntoViewIfNeeded();
+    await screenshot(page, `promo-card-${width}`, promo);
+    await promo.press('Enter');
+    await page.waitForURL('**/prodavnica');
+    await page.goBack();
+    await page.locator('.shop-home').waitFor();
+    assert.equal(await page.locator('.all-products a').getAttribute('href'), '/prodavnica');
+    await page.locator('.shop-track app-product-card a').first().click();
+    await page.waitForURL('**/prodavnica/proizvod-4');
+    await page.locator('.shop-info h1').waitFor();
+    const viewCart = page.locator('.shop-cart-cta');
+    const buyBox = await page.locator('.shop-buy').boundingBox(), viewCartBox = await viewCart.boundingBox();
+    assert.equal(await viewCart.getAttribute('href'), '/korpa');
+    assert.ok(viewCartBox.height >= 44 && viewCartBox.width < buyBox.width, 'secondary cart CTA stays touchable and compact');
+    assert.ok(Math.abs(viewCartBox.x - buyBox.x) < 1 && viewCartBox.y >= buyBox.y + buyBox.height + 12, 'secondary CTA is left aligned below primary with a gap');
+    assert.ok(viewCartBox.x >= 0 && viewCartBox.x + viewCartBox.width <= width);
+    assert.equal(await viewCart.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)');
+    assert.equal(await viewCart.evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(213, 0, 18)');
+    assert.equal(await viewCart.evaluate(el => getComputedStyle(el).fontFamily.split(',')[0].trim()), await page.locator('.shop-buy').evaluate(el => getComputedStyle(el).fontFamily.split(',')[0].trim()));
+    await page.keyboard.press('Tab');
+    await viewCart.focus();
+    assert.equal(await viewCart.evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
+    if (width === 1440) {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await viewCart.hover();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.shop-cart-cta')).color === 'rgb(255, 255, 255)');
+      assert.equal(await viewCart.evaluate(el => getComputedStyle(el).transitionDuration), '0.2s, 0.2s, 0.2s');
+      await page.mouse.move(0, 0);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+    }
+    await screenshot(page, `product-cart-cta-${width}`, viewCart);
+    await page.goBack();
+    await page.locator('.shop-home').waitFor();
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.locator('.header-cart').waitFor();
+    assert.equal(await page.locator('.header-cart').count(), 0);
+    assert.equal(await page.locator('.floating-cart').count(), 0);
     await page.waitForFunction(() => !document.querySelector('.site-header').classList.contains('header-hidden'));
     if (width <= 1080) {
-      assert.equal(await page.locator('.header-cart').isVisible(), true);
-      const cartBounds = await page.locator('.header-cart').boundingBox(); assert.ok(cartBounds.x >= 0 && cartBounds.x + cartBounds.width <= width);
       await page.locator('.nav-toggle').click();
     }
     await page.locator('.site-nav a[href="/prodavnica"]').click();
     await page.locator('.shop-grid app-product-card').first().waitFor();
     assert.equal(await page.locator('.shop-grid app-product-card').count(), 6);
+    assert.equal(await page.locator('.header-cart').isVisible(), true);
+    const cartBounds = await page.locator('.header-cart').boundingBox(); assert.ok(cartBounds.x >= 0 && cartBounds.x + cartBounds.width <= width);
     const columns = await page.locator('.shop-grid').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     assert.equal(columns, width > 1080 ? 3 : width > 720 ? 2 : 1);
     assert.equal(await page.locator('.product-badge').filter({ hasText: 'РАСПРОДАТО' }).count(), 1);
@@ -142,11 +275,18 @@ try {
     await page.evaluate(() => localStorage.setItem('kmf_shop_cart', '{broken'));
     await page.reload(); await page.getByText(/Сачувана корпа није исправна/).waitFor();
     emptyFeatured = true;
+    currentProducts[0].coverImage = null;
     const featuredResponse = page.waitForResponse((response) => response.url().includes('/shop/products?') && response.url().includes('featured=true'));
     await page.goto(base); await featuredResponse;
     await page.waitForFunction(() => document.querySelector('app-shop-carousel') !== null);
-    assert.equal(await page.locator('.shop-home').count(), 0);
+    await page.locator('.shop-home').waitFor();
+    assert.equal(await page.locator('.shop-track app-product-card').count(), currentProducts.length, 'active catalog is shown when no products are featured');
+    assert.equal(await page.locator('.shop-track img').first().getAttribute('src'), currentProducts[0].gallery[0].url);
     currentProducts = [];
+    const emptyCatalogResponse = page.waitForResponse(response => response.url().includes('/shop/products?') && !response.url().includes('featured=true'));
+    await page.goto(base);
+    await emptyCatalogResponse;
+    assert.equal(await page.locator('.shop-home').count(), 0);
     await page.goto(`${base}/prodavnica`);
     await page.getByRole('heading', { name: 'КОЛЕКЦИЈА УСКОРО СТИЖЕ' }).waitFor();
     failCatalog = true;
@@ -156,9 +296,84 @@ try {
     await page.goto(`${base}/kontakt`);
     await page.locator('#klub').waitFor();
     assert.equal(await page.locator('app-shop-carousel').count(), 0, 'the homepage Shop section must not change the existing contact route');
+
+    // Persistent cart UI on non-Shop routes, without modifying the saved cart on dismissal.
+    await page.evaluate(() => localStorage.setItem('kmf_shop_cart', JSON.stringify({ version: 1, items: [{ variantId: 'v1', quantity: 2 }], updatedAt: new Date().toISOString() })));
+    await page.goto(base);
+    await page.locator('.floating-cart-open').waitFor();
+    assert.match(await page.locator('.floating-cart-open').getAttribute('aria-label'), /2/);
+    await page.evaluate(() => window.scrollTo({ top: 800, behavior: 'instant' }));
+    await page.locator('.scroll-top.is-visible').waitFor();
+    const bubble = await page.locator('.floating-cart').boundingBox();
+    const topButton = await page.locator('.scroll-top').boundingBox();
+    assert.ok(bubble.y + bubble.height + 8 <= topButton.y, 'cart is above back-to-top with a gap');
+    assert.ok(bubble.x >= 0 && bubble.x + bubble.width <= width);
+    await screenshot(page, `floating-${width}`, page.locator('.floating-cart'));
+    if (artifactDir) await page.screenshot({ path: path.join(artifactDir, `floating-layout-${width}.png`) });
+    const savedCart = await page.evaluate(() => localStorage.getItem('kmf_shop_cart'));
+    if (width <= 768) {
+      const cdp = await context.newCDPSession(page);
+      const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x, y, id: 1 }] });
+      const x = bubble.x + bubble.width / 2, y = bubble.y + bubble.height / 2;
+      await touch('touchStart', x, y);
+      await page.locator('.floating-cart.is-dragging').waitFor();
+      await touch('touchMove', x - 100, y - 130);
+      await page.locator('.cart-dismiss-zone.is-visible').waitFor();
+      assert.ok((await page.locator('.floating-cart').boundingBox()).x < bubble.x - 50, 'bubble follows touch');
+      await touch('touchEnd');
+      await page.waitForFunction(() => !document.querySelector('.floating-cart').classList.contains('is-dragging'));
+      assert.ok(Math.abs((await page.locator('.floating-cart').boundingBox()).x - bubble.x) < 1, 'failed drag snaps back');
+      assert.ok(!page.url().includes('/korpa'), 'drag never triggers navigation');
+      await touch('touchStart', x, y);
+      await page.locator('.floating-cart.is-dragging').waitFor();
+      await touch('touchMove', x - 70, y - 80);
+      await touch('touchCancel');
+      await page.waitForFunction(() => !document.querySelector('.floating-cart').classList.contains('is-dragging'));
+      assert.ok(Math.abs((await page.locator('.floating-cart').boundingBox()).x - bubble.x) < 1, 'pointer cancellation restores position');
+      await touch('touchStart', x, y);
+      await page.locator('.floating-cart.is-dragging').waitFor();
+      const target = await page.locator('.cart-dismiss-target').boundingBox();
+      await touch('touchMove', target.x + target.width / 2, target.y + target.height / 2);
+      await page.locator('.cart-dismiss-zone.is-active').waitFor();
+      await touch('touchEnd');
+      await cdp.detach();
+    } else {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      assert.match(await page.locator('.floating-cart').evaluate(el => getComputedStyle(el).transitionDuration), /0\.2s/);
+      await page.locator('.floating-cart-close').focus();
+      await page.keyboard.press('Enter');
+    }
+    await page.locator('.floating-cart').waitFor({ state: 'detached' });
+    assert.equal(await page.evaluate(() => localStorage.getItem('kmf_shop_cart')), savedCart);
+    for (const route of ['/vesti', '/tim', '/uprava', '/kontakt']) {
+      await page.goto(base + route);
+      await page.locator('app-floating-cart').waitFor({ state: 'attached' });
+      assert.equal(await page.locator('.header-cart, .floating-cart').count(), 0, `dismiss persists on ${route}`);
+    }
+    await page.reload();
+    await page.locator('app-floating-cart').waitFor({ state: 'attached' });
+    assert.equal(await page.locator('.floating-cart').count(), 0, 'dismiss survives reload');
+    for (const route of ['/prodavnica?sort=new#top', '/prodavnica/proizvod-2', '/korpa', '/porudzbina', '/porudzbina/uspesno']) {
+      await page.goto(base + route);
+      await page.locator('.header-cart').waitFor();
+      assert.equal(await page.locator('.floating-cart').count(), 0, `no floating cart on ${route}`);
+      assert.equal(await page.locator('.header-cart span').innerText(), '2');
+    }
+    await page.goto(`${base}/prodavnica/proizvod-2`);
+    await page.getByRole('button', { name: 'M', exact: true }).click();
+    await page.getByRole('button', { name: /^ДОДАЈ У КОРПУ/ }).click();
+    await page.getByRole('button', { name: 'Затвори потврду' }).click();
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await page.waitForFunction(() => !document.querySelector('.site-header').classList.contains('header-hidden'));
+    await page.locator('.site-header .brand').click();
+    await page.locator('.floating-cart-open').waitFor();
+    assert.equal(await page.locator('.floating-cart-count').innerText(), '3', 'new product resets dismissal and updates count');
+    await page.locator('.floating-cart-open').click();
+    await page.waitForURL('**/korpa');
+    assert.equal(await page.locator('.floating-cart').count(), 0);
     assert.deepEqual(errors, []);
     await context.close();
-    console.log(`PASS ${width}px: homepage order/hiding, carousel, navigation/cart icon, grid, gallery, sizes, add/persist/refresh/remove, API error, 404 and corrupt storage.`);
+    console.log(`PASS ${width}px: homepage order/fallback/images/prices, responsive Shop, route cart visibility, floating count/navigation, close/drag/cancel, session persistence/reset, back-to-top spacing, cart regression.`);
   }
 } catch (error) {
   if (currentPage && !currentPage.isClosed()) {

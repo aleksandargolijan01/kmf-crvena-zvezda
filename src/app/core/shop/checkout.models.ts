@@ -1,6 +1,9 @@
+import { LanguageCode, TranslationKey, translations } from '../../i18n/translations';
 import { CartEntry } from './public-shop.models';
 export type OrderStatus = 'NEW' | 'CONFIRMED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED';
 export type OrderSource = 'WEBSITE' | 'INSTAGRAM' | 'PHONE' | 'IN_PERSON' | 'ADMIN';
+export const orderStatusKeys = { NEW: 'shop.statusNew', CONFIRMED: 'shop.statusConfirmed', SHIPPED: 'shop.statusShipped', COMPLETED: 'shop.statusCompleted', CANCELLED: 'shop.statusCancelled' } as const;
+export const orderSourceKeys = { WEBSITE: 'shop.sourceWebsite', INSTAGRAM: 'shop.sourceInstagram', PHONE: 'shop.phone', IN_PERSON: 'shop.sourceInPerson', ADMIN: 'shop.sourceAdmin' } as const;
 export const orderStatusLabels: Record<OrderStatus, string> = { NEW: 'Нова', CONFIRMED: 'Потврђена', SHIPPED: 'Послата', COMPLETED: 'Завршена', CANCELLED: 'Отказана' };
 export const orderSourceLabels: Record<OrderSource, string> = { WEBSITE: 'Сајт', INSTAGRAM: 'Инстаграм', PHONE: 'Телефон', IN_PERSON: 'Лично', ADMIN: 'Администрација' };
 export interface Customer { firstName: string; lastName: string; phone: string; email: string; address: string; city: string; postalCode: string; note: string; }
@@ -16,18 +19,21 @@ export interface OrderDetail extends OrderSummary, Customer {
 }
 export type VerificationMethod = 'LAST_NAME' | 'PHONE_LAST4' | 'PIN';
 export interface SeasonTicket { id: string; seasonKey: string; cardNumber: string; active: boolean; verificationMethod: VerificationMethod | null; validFrom: string | null; validUntil: string | null; }
-export const checkoutMessages: Record<string, string> = {
-  PRICE_CHANGED: 'Цена једног или више производа је промењена. Проверите нови износ и поново потврдите поруџбину.',
-  VARIANT_UNAVAILABLE: 'Један или више производа више није доступан у изабраној величини. Проверите корпу.',
-  PRODUCT_UNAVAILABLE: 'Један или више производа више није у понуди. Проверите корпу.',
-  SEASON_TICKET_INVALID: 'Сезонска карта није пронађена или није важећа. Проверите унете податке.',
-  QUOTE_EXPIRED: 'Обрачун је истекао. Освежите га и поново потврдите поруџбину.',
-  IDEMPOTENCY_CONFLICT: 'Овај покушај је већ повезан са другом поруџбином. Проверите претходну потврду.',
-  RATE_LIMITED: 'Превише покушаја. Сачекајте минут и покушајте поново.',
-  INVALID_STATUS: 'Ова промена статуса није дозвољена.',
-  SHOP_NOT_CONFIGURED: 'Поручивање тренутно није доступно.',
+export const checkoutMessageKeys: Record<string, TranslationKey> = {
+  PRICE_CHANGED: 'shop.priceChanged',
+  VARIANT_UNAVAILABLE: 'shop.variantUnavailable',
+  PRODUCT_UNAVAILABLE: 'shop.productUnavailable',
+  SEASON_TICKET_INVALID: 'shop.ticketInvalid',
+  QUOTE_EXPIRED: 'shop.quoteExpired',
+  IDEMPOTENCY_CONFLICT: 'shop.idempotencyConflict',
+  RATE_LIMITED: 'shop.rateLimited',
+  INVALID_STATUS: 'shop.invalidStatus',
+  SHOP_NOT_CONFIGURED: 'shop.checkoutUnavailable',
 };
-export function checkoutError(error: unknown): string {
+export function checkoutErrorKey(error: unknown): TranslationKey {
   const code = (error as { error?: { code?: string } })?.error?.code;
-  return code && checkoutMessages[code] || 'Захтев није успео. Проверите податке и покушајте поново.';
+  return code && checkoutMessageKeys[code] || 'shop.requestFailed';
 }
+
+export const checkoutMessages = Object.fromEntries(Object.entries(checkoutMessageKeys).map(([code, key]) => [code, translations.sr[key]]));
+export function checkoutError(error: unknown, language: LanguageCode = 'sr'): string { return translations[language][checkoutErrorKey(error)]; }

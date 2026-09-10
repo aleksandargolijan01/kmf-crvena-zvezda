@@ -58,6 +58,12 @@
         </div>
         <label>Адреса производа <input formControlName="slug" placeholder="Аутоматски из назива" /><small>Латинична слова, цифре и цртице. Промена назива не мења постојећу адресу.</small></label>
         <details><summary>Преводи — опционо</summary>
+          <p>Празни EN/RU преводи генеришу се аутоматски из српског текста. Када мењате српски текст, EN/RU се обнављају осим поља која ручно измените у истом чувању.</p>
+          @if (selected) {
+            <p>За обнову превода прво сачувајте измене. Допуна исправља празна поља и поља једнака српском тексту.</p>
+            <button type="button" class="admin-button ghost" [disabled]="busy || form.dirty" (click)="regenerateTranslations()">Допуни / исправи EN/RU</button>
+            <button type="button" class="admin-button ghost" [disabled]="busy || form.dirty" (click)="regenerateTranslations(true)">Поново преведи сва EN/RU поља</button>
+          }
           <div class="form-grid two-cols">
             <label>Назив на енглеском <input formControlName="nameEn" /></label><label>Назив на руском <input formControlName="nameRu" /></label>
             <label>Опис на енглеском <textarea formControlName="descriptionEn" rows="4"></textarea></label><label>Опис на руском <textarea formControlName="descriptionRu" rows="4"></textarea></label>

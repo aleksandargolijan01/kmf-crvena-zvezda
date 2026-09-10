@@ -1,6 +1,7 @@
+import { shopSr, shopEn, shopRu } from './shop-translations';
 export type LanguageCode = 'sr' | 'en' | 'ru';
 
-export type TranslationKey =
+export type TranslationKey = keyof typeof shopSr
   | 'nav.home'
   | 'nav.club'
   | 'nav.leadership'
@@ -126,6 +127,7 @@ export type TranslationKey =
 export type TranslationDictionary = Record<TranslationKey, string>;
 
 const sr: TranslationDictionary = {
+  ...shopSr,
   'nav.home': 'Почетна',
   'nav.club': 'Клуб',
   'nav.leadership': 'Управа',
@@ -250,6 +252,7 @@ const sr: TranslationDictionary = {
 };
 
 const en: TranslationDictionary = {
+  ...shopEn,
   'nav.home': 'Home',
   'nav.club': 'Club',
   'nav.leadership': 'Leadership',
@@ -374,6 +377,7 @@ const en: TranslationDictionary = {
 };
 
 const ru: TranslationDictionary = {
+  ...shopRu,
   'nav.home': 'Главная',
   'nav.club': 'Клуб',
   'nav.leadership': 'Руководство',

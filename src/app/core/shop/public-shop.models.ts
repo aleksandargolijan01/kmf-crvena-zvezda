@@ -1,3 +1,4 @@
+import { LanguageCode, translations } from '../../i18n/translations';
 import { LocalizedText } from '../../data/site.models';
 import { ProductAvailability } from '../api/shop-api.models';
 export { formatShopPrice } from './money';
@@ -18,8 +19,8 @@ export interface CatalogPage {
 export interface CartEntry { variantId: string; quantity: number; }
 export interface StoredCart { version: 1; items: CartEntry[]; updatedAt: string; }
 
-export function productBadge(product: CatalogProduct): string | null {
-  return product.availability === 'SOLD_OUT' ? 'РАСПРОДАТО' : product.isNew ? 'НОВО' : product.featured ? 'ИСТАКНУТО' : null;
+export function productBadge(product: CatalogProduct, language: LanguageCode = 'sr'): string | null {
+  return product.availability === 'SOLD_OUT' ? translations[language]['shop.soldOut'] : product.isNew ? translations[language]['shop.new'] : product.featured ? translations[language]['shop.featured'] : null;
 }
 
 // The public API already sorts by featuredOrder; keep its stable order.

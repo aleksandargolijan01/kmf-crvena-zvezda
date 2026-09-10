@@ -1,50 +1,50 @@
-<div class="checkout" lang="sr-Cyrl">
-  @if (recovering()) { <p role="status">Провера претходног покушаја…</p> }
-  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-  @if (uncertain()) { <button type="button" (click)="recover()" [disabled]="recovering()">ПРОВЕРИ ИСХОД ПОРУЏБИНЕ</button> }
+<div class="checkout">
+  @if (recovering()) { <p role="status">{{ i18n.t('shop.checkingAttempt') }}</p> }
+  @if (error()) { <p class="error" role="alert">{{ i18n.t(error() || 'shop.empty') }}</p> }
+  @if (uncertain()) { <button type="button" (click)="recover()" [disabled]="recovering()">{{ i18n.t('shop.checkOrder') }}</button> }
   @if (manual()) {
-    <section><h2>Избор производа</h2><label>Извор поруџбине<select [formControl]="source" [attr.disabled]="busy() ? '' : null">@for (source of sources; track source.value) { <option [value]="source.value">{{ source.label }}</option> }</select></label>
+    <section><h2>{{ i18n.t('shop.productSelection') }}</h2><label>{{ i18n.t('shop.orderSource') }}<select [formControl]="source" [attr.disabled]="busy() ? '' : null">@for (source of sources; track source.value) { <option [value]="source.value">{{ i18n.t(source.label) }}</option> }</select></label>
       <fieldset [formGroup]="selection" [disabled]="busy() || uncertain()">
-        <label>Производ и величина<select formControlName="variantId"><option value="">Изаберите производ</option>@for (product of products(); track product.id) { @for (variant of product.variants; track variant.id) { @if (variant.available) { <option [value]="variant.id">{{ product.name.sr }} — {{ variant.size }} — {{ money(product.priceMinor) }}</option> } } }</select></label>
-        <label>Количина<input type="number" min="1" max="99" step="1" formControlName="quantity" /></label><button type="button" [disabled]="selection.invalid" (click)="addItem()">ДОДАЈ СТАВКУ</button>
+        <label>{{ i18n.t('shop.productAndSize') }}<select formControlName="variantId"><option value="">{{ i18n.t('shop.selectProduct') }}</option>@for (product of products(); track product.id) { @for (variant of product.variants; track variant.id) { @if (variant.available) { <option [value]="variant.id">{{ i18n.text(product.name) }} — {{ variant.size }} — {{ money(product.priceMinor) }}</option> } } }</select></label>
+        <label>{{ i18n.t('shop.quantity') }}<input type="number" min="1" max="99" step="1" formControlName="quantity" /></label><button type="button" [disabled]="selection.invalid" (click)="addItem()">{{ i18n.t('shop.addItem') }}</button>
       </fieldset>
-      @for (item of manualItems(); track item.variantId) { <p>{{ itemName(item.variantId) }} × {{ item.quantity }} <button type="button" [disabled]="busy() || uncertain()" (click)="removeItem(item.variantId)">УКЛОНИ</button></p> }
+      @for (item of manualItems(); track item.variantId) { <p>{{ itemName(item.variantId) }} × {{ item.quantity }} <button type="button" [disabled]="busy() || uncertain()" (click)="removeItem(item.variantId)">{{ i18n.t('shop.remove') }}</button></p> }
     </section>
   }
-  @if (ready() && !items().length) { <p>Нема производа за поручивање.</p>@if (!manual()) { <a routerLink="/prodavnica">ИДИ У ПРОДАВНИЦУ</a> } }
+  @if (ready() && !items().length) { <p>{{ i18n.t('shop.noOrderItems') }}</p>@if (!manual()) { <a routerLink="/prodavnica">{{ i18n.t('shop.goToShop') }}</a> } }
   @if (items().length) {
     <form [formGroup]="customer" (ngSubmit)="submit()" novalidate>
       <div class="columns">
         <div>
-          <fieldset [disabled]="busy() || recovering() || uncertain()"><legend>Подаци за испоруку</legend>
-            <p>Испорука је доступна само у Србији. Сва поља осим напомене су обавезна.</p>
+          <fieldset [disabled]="busy() || recovering() || uncertain()"><legend>{{ i18n.t('shop.deliveryDetails') }}</legend>
+            <p>{{ i18n.t('shop.deliveryRequired') }}</p>
             <div class="fields">@for (field of fields; track field.key) {
-              <label [for]="'checkout-' + field.key">{{ field.label }}<input [id]="'checkout-' + field.key" [type]="field.type" [formControlName]="field.key" [attr.autocomplete]="manual() ? 'off' : field.autocomplete" [attr.maxlength]="field.max" [attr.inputmode]="field.key === 'postalCode' ? 'numeric' : null" required [attr.aria-invalid]="customer.controls[field.key].touched && customer.controls[field.key].invalid" />
-                @if (customer.controls[field.key].touched && customer.controls[field.key].invalid) { <small class="error">{{ field.key === 'postalCode' ? 'Унесите тачно 5 цифара.' : field.key === 'email' ? 'Унесите исправну имејл адресу.' : 'Унесите исправан податак.' }}</small> }
+              <label [for]="'checkout-' + field.key">{{ i18n.t(field.label) }}<input [id]="'checkout-' + field.key" [type]="field.type" [formControlName]="field.key" [attr.autocomplete]="manual() ? 'off' : field.autocomplete" [attr.maxlength]="field.max" [attr.inputmode]="field.key === 'postalCode' ? 'numeric' : null" required [attr.aria-invalid]="customer.controls[field.key].touched && customer.controls[field.key].invalid" />
+                @if (customer.controls[field.key].touched && customer.controls[field.key].invalid) { <small class="error">{{ field.key === 'postalCode' ? i18n.t('shop.invalidPostalCode') : field.key === 'email' ? i18n.t('shop.invalidEmail') : i18n.t('shop.invalidField') }}</small> }
               </label>
             }</div>
-            <label>Напомена уз поруџбину (необавезно)<textarea formControlName="note" maxlength="2000" rows="3"></textarea></label>
+            <label>{{ i18n.t('shop.orderNote') }}<textarea formControlName="note" maxlength="2000" rows="3"></textarea></label>
           </fieldset>
-          <fieldset [disabled]="busy() || recovering() || uncertain() || ticketBusy()"><legend>ИМАТЕ СЕЗОНСКУ КАРТУ?</legend><p>Власници важећих сезонских карата остварују 20% попуста на целу поруџбину.</p>
-            <label class="check"><input type="checkbox" [checked]="ticketEnabled()" (change)="toggleTicket($any($event.target).checked)" /> Имам сезонску карту</label>
+          <fieldset [disabled]="busy() || recovering() || uncertain() || ticketBusy()"><legend>{{ i18n.t('shop.haveTicket') }}</legend><p>{{ i18n.t('shop.orderTicketBenefit') }}</p>
+            <label class="check"><input type="checkbox" [checked]="ticketEnabled()" (change)="toggleTicket($any($event.target).checked)" /> {{ i18n.t('shop.ticketCheckbox') }}</label>
             @if (ticketEnabled()) {
-              <div [formGroup]="ticket"><label>Број сезонске карте<input formControlName="cardNumber" maxlength="100" autocomplete="off" /></label><label>Подаци за потврду<input type="password" formControlName="verificationValue" maxlength="120" autocomplete="off" /></label><p>Унесите податак који је клуб одредио за вашу карту: презиме, последње четири цифре телефона или ПИН.</p></div>
-              <button type="button" (click)="validateTicket()" [disabled]="ticket.invalid || ticketBusy()">{{ ticketBusy() ? 'ПРОВЕРА…' : 'ПРОВЕРИ КАРТУ' }}</button>
-              @if (ticketError()) { <p class="error" role="alert">{{ ticketError() }}</p> }
-              @if (ticketToken()) { <p role="status">Сезонска карта је потврђена. Остварили сте 20% попуста.</p> }
+              <div [formGroup]="ticket"><label>{{ i18n.t('shop.ticketNumber') }}<input formControlName="cardNumber" maxlength="100" autocomplete="off" /></label><label>{{ i18n.t('shop.verificationDetails') }}<input type="password" formControlName="verificationValue" maxlength="120" autocomplete="off" /></label><p>{{ i18n.t('shop.ticketVerificationHelp') }}</p></div>
+              <button type="button" (click)="validateTicket()" [disabled]="ticket.invalid || ticketBusy()">{{ ticketBusy() ? i18n.t('shop.checking') : i18n.t('shop.verifyTicket') }}</button>
+              @if (ticketError()) { <p class="error" role="alert">{{ i18n.t(ticketError() || 'shop.empty') }}</p> }
+              @if (ticketToken()) { <p role="status">{{ i18n.t('shop.ticketVerified') }}</p> }
             }
           </fieldset>
         </div>
-        <aside><h2>Преглед поруџбине</h2>
-          @if (loading()) { <p role="status">Провера цене и доступности…</p> }
+        <aside><h2>{{ i18n.t('shop.summary') }}</h2>
+          @if (loading()) { <p role="status">{{ i18n.t('shop.checkingQuote') }}</p> }
           @if (quote(); as quote) {
-            @for (item of quote.items; track item.variantId) { <div class="line"><span>{{ item.productName }} · {{ item.size }} × {{ item.quantity }}<small>{{ money(item.unitPriceMinor) }} по комаду</small></span><strong>{{ money(item.finalMinor) }}</strong></div> }
-            <dl><div><dt>Производи</dt><dd>{{ money(quote.subtotalMinor) }}</dd></div><div><dt>Попуст ({{ quote.discountPercent }}%)</dt><dd>−{{ money(quote.discountMinor) }}</dd></div><div><dt>Достава</dt><dd>Обрачунава се накнадно</dd></div><div class="total"><dt>Укупно за производе</dt><dd>{{ money(quote.totalMinor) }}</dd></div></dl>
+            @for (item of quote.items; track item.variantId) { <div class="line"><span>{{ quoteItemName(item) }} · {{ item.size }} × {{ item.quantity }}<small>{{ money(item.unitPriceMinor) }} {{ i18n.t('shop.perItem') }}</small></span><strong>{{ money(item.finalMinor) }}</strong></div> }
+            <dl><div><dt>{{ i18n.t('shop.products') }}</dt><dd>{{ money(quote.subtotalMinor) }}</dd></div><div><dt>{{ i18n.t('shop.discountPrefix') }}{{ quote.discountPercent }}%)</dt><dd>−{{ money(quote.discountMinor) }}</dd></div><div><dt>{{ i18n.t('shop.delivery') }}</dt><dd>{{ i18n.t('shop.shippingLater') }}</dd></div><div class="total"><dt>{{ i18n.t('shop.productTotal') }}</dt><dd>{{ money(quote.totalMinor) }}</dd></div></dl>
           }
-          <p>Трошак доставе није укључен у приказани износ и обрачунава се накнадно. Плаћање се врши поузећем.</p><h3>НАЧИН ПЛАЋАЊА</h3><p>Плаћање поузећем</p><p>Поруџбину и трошак доставе плаћате куриру приликом преузимања пошиљке.</p>
-          @if (!quote() || expired) { <p role="status">{{ ticketEnabled() && !ticketToken() ? 'Проверите карту или искључите сезонски попуст.' : 'Потребан је нови обрачун пре потврде.' }}</p><button type="button" (click)="refreshQuote()" [disabled]="loading() || busy() || (ticketEnabled() && !ticketToken())">ОСВЕЖИ ОБРАЧУН</button> }
-          <button class="confirm" type="submit" [disabled]="!canSubmit">{{ busy() ? 'СЛАЊЕ…' : 'ПОТВРДИ ПОРУЏБИНУ' }}</button>
-          @if (!manual()) { <a routerLink="/korpa">ИЗМЕНИ КОРПУ</a> }
+          <p>{{ i18n.t('shop.quoteShippingPayment') }}</p><h3>{{ i18n.t('shop.paymentMethod') }}</h3><p>{{ i18n.t('shop.cashOnDelivery') }}</p><p>{{ i18n.t('shop.payCourier') }}</p>
+          @if (!quote() || expired) { <p role="status">{{ ticketEnabled() && !ticketToken() ? i18n.t('shop.verifyOrDisable') : i18n.t('shop.quoteRequired') }}</p><button type="button" (click)="refreshQuote()" [disabled]="loading() || busy() || (ticketEnabled() && !ticketToken())">{{ i18n.t('shop.refreshQuote') }}</button> }
+          <button class="confirm" type="submit" [disabled]="!canSubmit">{{ busy() ? i18n.t('shop.sending') : i18n.t('shop.confirmOrder') }}</button>
+          @if (!manual()) { <a routerLink="/korpa">{{ i18n.t('shop.editCart') }}</a> }
         </aside>
       </div>
     </form>

@@ -179,11 +179,30 @@ export class ProductsAdminComponent implements OnInit {
         active: variant.active, available: variant.available, displayOrder, stockQuantity: variant.stockQuantity
       }))
     };
+    if (this.selected) {
+      for (const key of ['nameEn', 'nameRu', 'descriptionEn', 'descriptionRu'] as const) {
+        if (!this.form.controls[key].dirty) delete payload[key];
+      }
+    }
     this.saving = true;
     const request = this.selected ? this.api.update(this.selected.id, payload) : this.api.create(payload);
     request.pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.saving = false; this.changeDetector.markForCheck(); })).subscribe({
       next: (product) => { this.applyProduct(product); this.toasts.success('Производ је успешно сачуван.'); this.load(); },
       error: (error: HttpErrorResponse) => { this.error = this.errorMessage(error); this.toasts.error(this.error); }
+    });
+  }
+
+  regenerateTranslations(force = false) {
+    if (this.busy || !this.selected || this.form.dirty) return;
+    if (force && !confirm('Поново превести сва EN/RU поља овог производа? Постојећи ручни преводи биће замењени.')) return;
+    this.saving = true;
+    this.api.regenerateTranslations(this.selected.id, force).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.saving = false; this.changeDetector.markForCheck(); })).subscribe({
+      next: (result) => {
+        this.applyProduct(result.product); this.load();
+        if (result.errors.length) this.toasts.error('Неки преводи нису успели. Постојеће вредности су сачуване; покушајте поново.');
+        else this.toasts.success(result.translatedFields.length ? 'Преводи су обновљени.' : 'Нема превода за допуну.');
+      },
+      error: (error: HttpErrorResponse) => this.toasts.error(this.errorMessage(error))
     });
   }
 

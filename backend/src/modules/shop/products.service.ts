@@ -8,6 +8,8 @@ import { AdminProductsQueryDto, ProductsQueryDto } from './dto/products-query.dt
 import { CreateProductDto, UpdateProductDto } from './dto/product-write.dto';
 import { ProductVariantDto } from './dto/product-parts.dto';
 import { assertMinor } from './utils/money';
+import { TranslationService } from '../translation/translation.service';
+import { productTextFields, translateProduct } from './product-translations';
 
 const mediaSelect = { id: true, url: true, altText: true } satisfies Prisma.MediaFileSelect;
 const relations = {
@@ -26,7 +28,7 @@ const content = (value: string) => sanitizeHtml(value, {
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly translationService: TranslationService) {}
 
   async findPublic(query: ProductsQueryDto) {
     const page = query.page ?? 1;
@@ -72,6 +74,26 @@ export class ProductsService {
     return this.write(dto, id);
   }
 
+  async regenerateTranslations(id: string, force = false) {
+    const snapshot = await this.requireProduct(this.prisma, id);
+    const result = await translateProduct(this.translationService, {}, snapshot, force ? 'all' : 'missing');
+    const data = this.normalize(result.translations as UpdateProductDto).data;
+    const product = await this.prisma.$transaction(async (tx) => {
+      await this.lockProduct(tx, id);
+      const current = await this.requireProduct(tx, id);
+      this.assertTranslationSnapshot(snapshot, current);
+      if (Object.keys(data).length) await tx.product.update({ where: { id }, data });
+      return this.toAdmin(await this.requireProduct(tx, id));
+    });
+    return { product, translatedFields: Object.keys(result.translations), errors: result.errors };
+  }
+
+  private assertTranslationSnapshot(snapshot: ProductRecord, current: ProductRecord) {
+    if (productTextFields.some(key => snapshot[key] !== current[key])) {
+      throw new ConflictException('Текст производа је у међувремену измењен. Освежите производ и покушајте поново.');
+    }
+  }
+
   async remove(id: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -90,13 +112,18 @@ export class ProductsService {
 
   private async write(dto: CreateProductDto | UpdateProductDto, id?: string) {
     const normalized = this.normalize(dto);
+    // Network calls must finish before opening the short, locking write transaction.
+    const snapshot = id ? await this.requireProduct(this.prisma, id) : undefined;
+    const result = await translateProduct(this.translationService, normalized.data, snapshot);
+    const translated = this.normalize(result.translations as UpdateProductDto).data;
     // The unique index is authoritative; retry generated slugs even on simultaneous creates.
     for (let attempt = 0; attempt < 8; attempt++) {
       try {
         const item = await this.prisma.$transaction(async (tx) => {
           if (id) await this.lockProduct(tx, id);
           const existing = id ? await this.requireProduct(tx, id) : undefined;
-          const data = { ...normalized.data };
+          if (snapshot && existing) this.assertTranslationSnapshot(snapshot, existing);
+          const data = { ...normalized.data, ...translated };
           if (!existing && (!data.nameSr || !data.descriptionSr || data.priceMinor === undefined)) {
             throw new BadRequestException('Назив, опис и цена су обавезни.');
           }
@@ -251,7 +278,7 @@ export class ProductsService {
   }
 
   private toPublic(item: ProductRecord) {
-    const localized = (sr: string, en: string | null, ru: string | null) => ({ sr, en: en || sr, ru: ru || sr });
+    const localized = (sr: string, en: string | null, ru: string | null) => ({ sr, en: en?.trim() ? en : sr, ru: ru?.trim() ? ru : sr });
     const variants = item.variants.filter((variant) => variant.active).map((variant) => ({
       id: variant.id, size: variant.size,
       available: variant.available && item.availability !== ProductAvailability.SOLD_OUT,

@@ -1,0 +1,15 @@
+@if (visible()) {
+  <div class="floating-cart" [class.is-dragging]="dragging()" [class.is-targeted]="inTarget()"
+    [class.is-closing]="closing()" [style.transform]="position()">
+    <button class="floating-cart-open" type="button" [attr.aria-label]="i18n.t('shop.openCartCount') + cart.count()"
+      (click)="open()" (pointerdown)="down($event)" (pointermove)="move($event)" (pointerup)="up($event)"
+      (pointercancel)="cancel()" (lostpointercapture)="dragging() && cancel()" (keydown.escape)="cancel()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l2.5 12h11l2-8H6M9 20h.01M18 20h.01" /></svg>
+      <span class="floating-cart-count" aria-hidden="true">{{ cart.count() }}</span>
+    </button>
+    <button class="floating-cart-close" type="button" [attr.aria-label]="i18n.t('shop.hideCart')" (click)="dismiss()"><span aria-hidden="true">×</span></button>
+  </div>
+  <div class="cart-dismiss-zone" [class.is-visible]="dragging()" [class.is-active]="inTarget()" aria-hidden="true">
+    <div #target class="cart-dismiss-target">×</div><span>{{ i18n.t('shop.dragToHide') }}</span>
+  </div>
+}

@@ -37,6 +37,11 @@
 .shop-buy { width: 100%; }
 .shop-buy + p { margin-top: 18px; }
 .shop-buy:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.shop-cart-cta { width: max-content; max-width: 100%; color: var(--red); background: white; border-color: var(--red); box-shadow: none; transition: background 200ms ease, color 200ms ease, border-color 200ms ease; }
+.shop-cart-cta:hover { color: white; background: var(--red); box-shadow: none; transform: none; }
+.shop-cart-cta::before { display: none; }
+.shop-cart-cta::after { transition: transform 200ms ease; }
+.shop-cart-cta:hover::after { transform: translate(3px, -1px); }
 .shop-facts { display: grid; gap: 16px; margin-top: 32px; padding-top: 25px; border-top: 1px solid var(--line); }
 .shop-facts dt { font-size: 13px; font-weight: 800; color: var(--red); }
 .shop-facts dd { margin: 5px 0 0; font-size: 14px; }

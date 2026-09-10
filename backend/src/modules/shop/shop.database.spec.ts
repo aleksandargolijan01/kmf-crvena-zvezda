@@ -1,3 +1,4 @@
+import { TranslationService } from '../translation/translation.service';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { ProductsService } from './products.service';
@@ -22,7 +23,7 @@ databaseSuite('Shop PostgreSQL integration (disposable database)', () => {
   let productId: string;
   beforeAll(async () => {
     db = new PrismaClient({ datasources: { db: { url: databaseUrl! } } });
-    products = new ProductsService(db as PrismaService);
+    products = new ProductsService(db as PrismaService, { translateMissingFieldsWithResult: jest.fn().mockResolvedValue({ translations: {}, errors: [] }) } as unknown as TranslationService);
     await db.$connect();
   });
   afterAll(async () => { await db?.$disconnect(); });

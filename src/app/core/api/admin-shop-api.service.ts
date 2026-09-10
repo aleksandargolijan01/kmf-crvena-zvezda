@@ -17,6 +17,9 @@ export class AdminShopApiService {
     return this.http.get<PageResponse<AdminProduct>>(this.url, { params });
   }
   detail(id: string) { return this.http.get<AdminProduct>(`${this.url}/${id}`); }
+  regenerateTranslations(id: string, force = false) {
+    return this.http.post<{ product: AdminProduct; translatedFields: string[]; errors: Array<{ target: string; message: string }> }>(`${this.url}/${id}/translations/regenerate`, { force });
+  }
   create(payload: ProductWrite) { return this.http.post<AdminProduct>(this.url, payload); }
   update(id: string, payload: Partial<ProductWrite>) { return this.http.patch<AdminProduct>(`${this.url}/${id}`, payload); }
   remove(id: string) { return this.http.delete<{ success: boolean }>(`${this.url}/${id}`); }

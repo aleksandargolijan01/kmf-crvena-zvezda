@@ -13,9 +13,10 @@ import { ShopOrdersService } from './orders/shop-orders.service';
 import { OrderEmailWorkerService } from './orders/order-email-worker.service';
 import { CheckoutController } from './checkout/checkout.controller';
 import { AdminCheckoutController } from './checkout/admin-checkout.controller';
+import { TranslationModule } from '../translation/translation.module';
 
 @Module({
-  imports: [AuthModule, MailModule],
+  imports: [AuthModule, MailModule, TranslationModule],
   controllers: [ProductsController, AdminProductsController, CheckoutController, AdminCheckoutController],
   providers: [ProductsService, OrderNumberService, OrderOutboxService, ShopTokensService, ShopPricingService, SeasonTicketsService, ShopOrdersService, OrderEmailWorkerService],
   exports: [OrderNumberService, OrderOutboxService],

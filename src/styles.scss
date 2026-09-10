@@ -747,7 +747,7 @@ h3 {
 }
 
 .hero .eyebrow::before {
-  content: "★";
+  content: "";
   color: var(--red);
   font-size: 26px;
 }
@@ -2641,8 +2641,8 @@ app-news-card {
 
 .scroll-top {
   position: fixed;
-  right: 20px;
-  bottom: 24px;
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   z-index: 80;
   display: grid;
   place-items: center;
@@ -3004,8 +3004,8 @@ app-news-card {
   }
 
   .scroll-top {
-    right: 16px;
-    bottom: 18px;
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
     width: 46px;
     height: 46px;
   }
@@ -3275,8 +3275,8 @@ app-news-card {
   }
 
   .scroll-top {
-    right: 14px;
-    bottom: 16px;
+    right: calc(14px + env(safe-area-inset-right, 0px));
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: 44px;
     height: 44px;
   }
