@@ -98,10 +98,9 @@ export class ProductsService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         await this.lockProduct(tx, id);
-        const existing = await this.requireProduct(tx, id);
-        if (existing.active) throw new ConflictException('Прво деактивирајте производ.');
+        await this.requireProduct(tx, id);
         const usage = await tx.orderItem.count({ where: { OR: [{ productId: id }, { variant: { productId: id } }] } });
-        if (usage) throw new ConflictException('Производ је коришћен у поруџбинама. Може само да се деактивира.');
+        if (usage) throw new ConflictException('Производ не може бити обрисан јер постоји у постојећим поруџбинама. Можете га деактивирати.');
         await tx.product.delete({ where: { id } });
         return { success: true };
       });
@@ -273,7 +272,7 @@ export class ProductsService {
         void usage;
         return variant;
       }),
-      canDelete: !item.active && _count.orderItems === 0 && item.variants.every((variant) => variant._count.orderItems === 0),
+      canDelete: _count.orderItems === 0 && item.variants.every((variant) => variant._count.orderItems === 0),
     };
   }
 

@@ -52,7 +52,7 @@ export class CheckoutFormComponent {
     postalCode: ['', [Validators.required, Validators.pattern(/^\d{5}$/)]],
     note: ['', Validators.maxLength(2000)]
   });
-  readonly ticket = this.fb.group({ cardNumber: ['', [Validators.required, Validators.maxLength(100)]], verificationValue: ['', [Validators.required, Validators.maxLength(120)]] });
+  readonly ticket = this.fb.group({ fullName: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]], cardNumber: ['', [Validators.required, Validators.pattern(/^[0-9]+(?![\s\S])/), Validators.maxLength(100)]] });
   readonly fields = [
     { key: 'firstName', label: 'shop.firstName', type: 'text', autocomplete: 'given-name', max: 100 },
     { key: 'lastName', label: 'shop.lastName', type: 'text', autocomplete: 'family-name', max: 100 },
@@ -115,8 +115,7 @@ export class CheckoutFormComponent {
     this.ticketBusy.set(true); this.ticketError.set('');
     const value = this.ticket.getRawValue();
     try {
-      const result = await firstValueFrom(this.api.validateTicket(value.cardNumber.trim(), value.verificationValue.trim()));
-      this.ticket.controls.verificationValue.reset('', { emitEvent: false });
+      const result = await firstValueFrom(this.api.validateTicket(value.cardNumber, value.fullName.trim()));
       this.ticketToken.set(result.seasonTicketToken);
     } catch (error) { this.ticketToken.set(undefined); this.ticketError.set(checkoutErrorKey(error)); }
     finally { this.ticketBusy.set(false); }

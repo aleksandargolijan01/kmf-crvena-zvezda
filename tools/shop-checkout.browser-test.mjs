@@ -35,7 +35,7 @@ async function fixture(width, admin = false) {
   const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' }); context.setDefaultTimeout(15000);
   const state = { creates: [], quoteCalls: 0, price: 300000, quoteDelay: 0, quoteStatus: 201, nextError: null, ticketValid: false, receipt: null, delayCreate: 0, recoverCalls: 0, statusCalls: [], savedTickets: [], retryCalls: 0, dropResponse: false };
   const detail = { ...customer, id: 'order1', orderNumber: 'CZ-2026-TEST', status: 'NEW', source: 'PHONE', createdAt: new Date().toISOString(), ...quote({ items: [{ variantId: 'v1', quantity: 1 }] }), statusHistory: [{ id: 'h1', status: 'NEW', createdAt: new Date().toISOString(), changedBy: { firstName: 'Тест', lastName: 'Администратор' } }], allowedStatuses: ['CONFIRMED', 'CANCELLED'], emails: [{ id: 'email1', kind: 'CLUB', status: 'FAILED', attempts: 5, lastError: 'Слање није успело.', nextAttemptAt: null, sentAt: null }] };
-  const ticket = { id: 't1', seasonKey: 'ТЕСТ', cardNumber: 'TEST-001', active: true, verificationMethod: 'PIN', validFrom: null, validUntil: null };
+  const ticket = { id: 't1', seasonKey: 'ТЕСТ', cardNumber: 'TEST-001', fullName: null, active: true, verificationMethod: 'PIN', validFrom: null, validUntil: null };
   await context.route('**/*', async route => {
     const url = new URL(route.request().url()), p = url.pathname;
     if (url.origin === base && route.request().isNavigationRequest()) return route.continue();
@@ -44,7 +44,11 @@ async function fixture(width, admin = false) {
       state.quoteCalls++; if (state.quoteDelay) await new Promise(resolve => setTimeout(resolve, state.quoteDelay));
       return route.fulfill({ status: state.quoteStatus, json: state.quoteStatus === 201 ? quote(route.request().postDataJSON(), state.price) : { code: 'INVALID_INPUT' } });
     }
-    if (p === '/shop/season-ticket/validate') return route.fulfill({ status: state.ticketValid ? 201 : 400, json: state.ticketValid ? { valid: true, discountPercent: 20, seasonTicketToken: 'fixture-ticket' } : { code: 'SEASON_TICKET_INVALID' } });
+    if (p === '/shop/season-ticket/validate') {
+      assert.deepEqual(route.request().postDataJSON(), { cardNumber: '000123', fullName: 'Тест Власник' });
+      assert.equal(url.search, '');
+      return route.fulfill({ status: state.ticketValid ? 201 : 400, json: state.ticketValid ? { valid: true, discountPercent: 20, seasonTicketToken: 'fixture-ticket' } : { code: 'SEASON_TICKET_INVALID' } });
+    }
     if (p === '/shop/orders/recover') { state.recoverCalls++; return route.fulfill({ json: state.receipt ? { found: true, ...state.receipt } : { found: false } }); }
     if (p === '/shop/orders/receipt') return route.fulfill({ status: state.receipt ? 201 : 409, json: state.receipt ?? { code: 'RECEIPT_EXPIRED' } });
     if ((p === '/shop/orders' || p === '/admin/shop/orders') && route.request().method() === 'POST') {
@@ -61,7 +65,7 @@ async function fixture(width, admin = false) {
     if (p.endsWith('/emails/email1/retry')) { state.retryCalls++; detail.emails[0].status = 'PENDING'; return route.fulfill({ json: { success: true } }); }
     if (p.startsWith('/admin/shop/season-tickets')) {
       if (route.request().method() === 'GET') return route.fulfill({ json: pageResponse([ticket]) });
-      const body = route.request().postDataJSON(); state.savedTickets.push(body); return route.fulfill({ json: { ...ticket, ...body, verificationValue: undefined } });
+      const body = route.request().postDataJSON(); state.savedTickets.push(body); Object.assign(ticket, body, { verificationMethod: 'FULL_NAME' }); return route.fulfill({ json: ticket });
     }
     if (url.origin === base) return route.continue();
     return route.fulfill({ json: pageResponse([]) });
@@ -96,11 +100,16 @@ try {
     await page.locator('#checkout-postalCode').fill('123'); await submitDisabled(page, true); await page.locator('#checkout-postalCode').fill(customer.postalCode);
     assert.match(await page.locator('.checkout aside').innerText(), /Трошак доставе није укључен.*обрачунава се накнадно/s);
     await page.getByLabel('Имам сезонску карту').check(); await submitDisabled(page, true);
-    await page.locator('[formcontrolname="cardNumber"]').fill('TEST-001'); await page.locator('[formcontrolname="verificationValue"]').fill('fixture-verifier');
-    await page.getByRole('button', { name: 'ПРОВЕРИ КАРТУ', exact: true }).click(); await page.getByText(/Сезонска карта није пронађена/).waitFor(); await submitDisabled(page, true);
+    await page.locator('[formcontrolname="fullName"]').fill('Тест Власник');
+    for (const number of ['TEST-001', '123-456', '12 34']) {
+      await page.locator('[formcontrolname="cardNumber"]').fill(number);
+      assert.equal(await page.getByRole('button', { name: 'ПРОВЕРИ КАРТУ', exact: true }).isDisabled(), true);
+    }
+    await page.locator('[formcontrolname="cardNumber"]').fill('000123');
+    await page.getByRole('button', { name: 'ПРОВЕРИ КАРТУ', exact: true }).click(); await page.getByText(/Подаци сезонске карте нису исправни/).waitFor(); await submitDisabled(page, true);
     state.ticketValid = true; await page.getByRole('button', { name: 'ПРОВЕРИ КАРТУ', exact: true }).click(); await page.getByText(/Сезонска карта је потврђена/).waitFor();
     await page.locator('.checkout .total dd').filter({ hasText: '2.400 RSD' }).waitFor();
-    assert.equal(await page.locator('[formcontrolname="verificationValue"]').inputValue(), '');
+    assert.equal(await page.locator('[formcontrolname="fullName"]').inputValue(), 'Тест Власник');
     assert.equal(await page.locator('.checkout').evaluate(el => el.getBoundingClientRect().right <= innerWidth), true);
     await screenshot(page, `checkout-${width}`);
     state.price = 400000; state.nextError = 'PRICE_CHANGED'; await submit.click();
@@ -119,8 +128,17 @@ try {
     assert.equal(state.creates.length, 3); assert.ok(state.creates.every(body => body.idempotencyKey === key));
     assert.equal(await hasCart(page), false); assert.equal(new URL(page.url()).search, '');
     const storage = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
-    assert.doesNotMatch(storage, /browser@example|Тест улица|fixture-verifier|fixture-ticket/);
+    assert.doesNotMatch(storage, /browser@example|Тест улица|Тест Власник|000123|fixture-ticket/);
     await page.reload(); await page.getByText('CZ-2026-TEST', { exact: true }).waitFor(); await screenshot(page, `success-${width}`);
+    const actions = page.locator('.shop-success-actions a');
+    assert.equal(await actions.count(), 2);
+    assert.deepEqual(await actions.evaluateAll(links => links.map(link => link.getAttribute('href'))), ['/prodavnica', '/']);
+    const boxes = await actions.evaluateAll(links => links.map(link => { const r = link.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
+    assert.ok(boxes[1].x - boxes[0].right >= 15 || boxes[1].y - boxes[0].bottom >= 15, 'CTA gap must remain at least 15px');
+    assert.ok(boxes.every(box => box.x >= 0 && box.right <= width));
+    if (width === 1440) assert.equal(boxes[0].y, boxes[1].y);
+    await actions.first().click(); await page.waitForURL('**/prodavnica');
+    await page.goto(base + '/porudzbina/uspesno'); await page.locator('.shop-success-actions a').last().click(); await page.waitForURL(base + '/');
     assert.deepEqual(errors, []); await context.close();
     console.log(`PASS ${width}px: required fields/email/postal, quote loading, seasonal failure/success/20%, delivery, price change, unavailable variant, idempotency/double click, cart safety, success/refresh/privacy.`);
   }
@@ -161,21 +179,26 @@ try {
     await page.getByRole('button', { name: 'ПОТВРДИ ПОРУЏБИНУ', exact: true }).click(); await page.waitForURL('**/admin/shop/orders?search=*');
     assert.equal(state.creates[0].source, 'INSTAGRAM'); assert.equal(state.creates[0].customer.email, customer.email); assert.equal('priceMinor' in state.creates[0], false); assert.equal(await hasCart(page), true, 'manual orders leave public cart intact');
     await page.goto(base + '/admin/shop/season-tickets'); await page.getByRole('button', { name: 'ИЗМЕНИ', exact: true }).click();
-    const verifier = page.locator('[formcontrolname="verificationValue"]'); assert.equal(await verifier.inputValue(), ''); assert.equal(await verifier.getAttribute('type'), 'password');
+    const owner = page.locator('[formcontrolname="fullName"]'), number = page.locator('[formcontrolname="cardNumber"]');
+    await page.getByText(/Стара карта није спремна/).waitFor();
+    assert.equal(await owner.inputValue(), ''); assert.equal(await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).isDisabled(), true);
+    assert.equal(await number.getAttribute('type'), 'text'); assert.equal(await number.getAttribute('inputmode'), 'numeric');
     await screenshot(page, `cms-tickets-${width}`);
-    await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).click(); await page.getByText('Сезонска карта је сачувана.').waitFor(); assert.equal(state.savedTickets[0].verificationValue, '');
-    await page.getByRole('button', { name: 'ИЗМЕНИ', exact: true }).click(); await verifier.fill('new-private-pin'); await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).click(); await page.getByText('Сезонска карта је сачувана.').waitFor(); assert.equal(state.savedTickets[1].verificationValue, 'new-private-pin');
-    await page.getByRole('button', { name: 'ИЗМЕНИ', exact: true }).click(); assert.equal(await verifier.inputValue(), '');
+    await owner.fill('Тест Власник'); await number.fill('000123');
+    await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).click(); await page.getByText('Сезонска карта је сачувана.').waitFor();
+    assert.equal(state.savedTickets[0].cardNumber, '000123'); assert.equal(state.savedTickets[0].fullName, 'Тест Власник'); assert.equal('verificationValue' in state.savedTickets[0], false);
+    await page.getByRole('button', { name: 'ИЗМЕНИ', exact: true }).click(); await owner.fill('Нови Власник'); await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).click(); await page.getByText('Сезонска карта је сачувана.').waitFor(); assert.equal(state.savedTickets[1].fullName, 'Нови Власник');
+    await page.getByRole('button', { name: 'ИЗМЕНИ', exact: true }).click(); assert.equal(await owner.inputValue(), 'Нови Власник');
     await page.getByRole('button', { name: 'ОДУСТАНИ', exact: true }).click();
     await page.getByRole('button', { name: 'ДОДАЈ КАРТУ', exact: true }).click();
     assert.equal(await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).isDisabled(), true);
-    await page.locator('[formcontrolname="cardNumber"]').fill('TEST-NEW'); await page.locator('[formcontrolname="seasonKey"]').fill('ТЕСТ');
-    await page.locator('[formcontrolname="verificationMethod"]').selectOption('PIN'); await verifier.fill('new-card-pin'); await page.getByLabel('Активна', { exact: true }).check();
+    await number.fill('000456'); await page.locator('[formcontrolname="seasonKey"]').fill('ТЕСТ');
+    await owner.fill('Други Власник'); await page.getByLabel('Активна', { exact: true }).check();
     await page.getByRole('button', { name: 'САЧУВАЈ', exact: true }).click(); await page.getByText('Сезонска карта је сачувана.').waitFor();
-    assert.equal(state.savedTickets[2].cardNumber, 'TEST-NEW'); assert.equal(state.savedTickets[2].active, true);
+    assert.equal(state.savedTickets[2].cardNumber, '000456'); assert.equal(state.savedTickets[2].active, true);
     assert.equal(await page.locator('.operations h1').evaluate(el => getComputedStyle(el).color), 'rgb(36, 36, 36)');
     assert.equal(await page.locator('.operations').evaluate(el => el.getBoundingClientRect().right <= innerWidth), true);
-    assert.deepEqual(errors, []); await context.close(); console.log(`PASS CMS ${width}px: order status/history/terminal, FAILED retry, manual authoritative order/source, write-only verifier blank/edit.`);
+    assert.deepEqual(errors, []); await context.close(); console.log(`PASS CMS ${width}px: order status/history/terminal, FAILED retry, manual authoritative order/source, legacy ticket completion, full name/create/edit/leading zeros.`);
   }
 } catch (error) {
   if (currentPage && !currentPage.isClosed()) { console.error('Failure URL:', currentPage.url()); console.error((await currentPage.locator('body').innerText()).slice(-5500)); await screenshot(currentPage, 'checkout-failure'); }

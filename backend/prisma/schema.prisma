@@ -313,6 +313,7 @@ enum OrderSource {
 }
 
 enum SeasonTicketVerificationMethod {
+  FULL_NAME
   LAST_NAME
   PHONE_LAST4
   PIN
@@ -402,6 +403,7 @@ model SeasonTicket {
   id                 String @id @default(cuid())
   seasonKey          String
   cardNumber         String
+  fullName           String? @db.VarChar(200)
   active             Boolean @default(true)
   validFrom          DateTime?
   validUntil         DateTime?

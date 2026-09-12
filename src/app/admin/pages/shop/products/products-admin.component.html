@@ -29,7 +29,7 @@
                 <td><div class="row-actions compact">
                   <button type="button" (click)="edit(item)" [disabled]="busy">Измени</button>
                   <button type="button" (click)="toggle(item)" [disabled]="busy">{{ item.active ? 'Деактивирај' : 'Активирај' }}</button>
-                  <button type="button" class="danger" (click)="remove(item)" [disabled]="busy || !item.canDelete" [title]="item.canDelete ? 'Обриши производ' : 'Бришу се само неактивни производи без поруџбина'">Обриши</button>
+                  <button type="button" class="danger" (click)="remove(item)" [disabled]="busy || loading" [title]="item.canDelete ? 'Обриши производ' : 'Производ постоји у поруџбинама. Можете га деактивирати.'">Обриши</button>
                 </div></td>
               </tr>
             }

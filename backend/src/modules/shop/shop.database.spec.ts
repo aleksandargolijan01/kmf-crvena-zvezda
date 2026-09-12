@@ -46,6 +46,20 @@ databaseSuite('Shop PostgreSQL integration (disposable database)', () => {
     await expect(db.product.update({ where: { id: productId }, data: { displayOrder: -1 } })).rejects.toThrow();
     await expect(db.productVariant.create({ data: { productId, size: ' m ' } })).rejects.toThrow();
     await expect(db.seasonTicket.create({ data: { seasonKey: 'bad', cardNumber: '001', validFrom: new Date('2026-10-01'), validUntil: new Date('2026-09-01') } })).rejects.toThrow();
+    await expect(db.seasonTicket.create({ data: { seasonKey: 'bad', cardNumber: 'TEST-001', fullName: 'Тест Купац' } })).rejects.toThrow();
+  });
+
+  it.each([true, false])('deletes unused products (active=%s), cascades owned rows and preserves shared media', async active => {
+    const media = await db.mediaFile.create({ data: { bucket: 'test', storagePath: `delete-${active}-${Date.now()}`, url: 'https://example.invalid/shared.png', originalName: 'shared.png', fileName: 'shared.png', mimeType: 'image/png', size: 100 } });
+    const shared = await products.create({ nameSr: 'Други производ', descriptionSr: 'Опис', priceMinor: 1, coverImageId: media.id });
+    const item = await products.create({ nameSr: 'За брисање', descriptionSr: 'Опис', priceMinor: 1, active, coverImageId: media.id, gallery: [{ mediaFileId: media.id }], variants: [{ size: 'M' }] });
+    expect(item.canDelete).toBe(true);
+    await products.remove(item.id);
+    expect(await db.product.findUnique({ where: { id: item.id } })).toBeNull();
+    expect(await db.productImage.count({ where: { productId: item.id } })).toBe(0);
+    expect(await db.productVariant.count({ where: { productId: item.id } })).toBe(0);
+    expect(await db.mediaFile.findUnique({ where: { id: media.id } })).toEqual(media);
+    expect((await products.findAdminById(shared.id)).coverImageId).toBe(media.id);
   });
 
   it('rolls back all product changes when a duplicate SKU fails', async () => {
@@ -95,7 +109,10 @@ databaseSuite('Shop PostgreSQL integration (disposable database)', () => {
     expect(order.shippingMinor).toBeNull();
     expect(order.shippingCalculated).toBe(false);
     expect(await db.orderEmail.count({ where: { orderId: order.id } })).toBe(1);
-    await expect(products.remove(productId)).rejects.toThrow();
+    expect((await products.findAdminById(productId)).canDelete).toBe(false);
+    await expect(products.remove(productId)).rejects.toThrow('Можете га деактивирати.');
+    expect(await db.orderItem.findUnique({ where: { id: snapshot.id } })).toEqual(snapshot);
+    expect(await db.orderStatusHistory.count({ where: { orderId: order.id } })).toBe(1);
     await expect(db.product.delete({ where: { id: productId } })).rejects.toThrow();
     await expect(products.update(productId, { variants: [] })).rejects.toThrow();
     await expect(db.orderItem.update({ where: { id: snapshot.id }, data: { quantity: 0 } })).rejects.toThrow();

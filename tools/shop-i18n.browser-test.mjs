@@ -108,8 +108,8 @@ try {
     await page.locator('.cart-summary .shop-buy').click(); await page.locator('.checkout .line').waitFor();
     await page.locator('#checkout-email').fill('invalid'); await page.locator('#checkout-email').blur();
     await page.locator('.checkout .check input').check();
-    await page.locator('[formcontrolname="cardNumber"]').fill('test-card');
-    await page.locator('[formcontrolname="verificationValue"]').fill('test-pin');
+    await page.locator('[formcontrolname="cardNumber"]').fill('000123');
+    await page.locator('[formcontrolname="fullName"]').fill('Test Customer');
     await page.getByRole('button', { name: translations.ru['shop.verifyTicket'], exact: true }).click();
     await page.getByText(translations.ru['shop.ticketInvalid'], { exact: true }).waitFor();
     await languages(async (lang, dict) => {

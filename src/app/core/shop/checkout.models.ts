@@ -17,8 +17,8 @@ export interface OrderDetail extends OrderSummary, Customer {
   statusHistory: Array<{ id: string; status: OrderStatus; createdAt: string; changedBy: { firstName: string; lastName: string } | null }>;
   emails: Array<{ id: string; kind: 'CLUB' | 'CUSTOMER'; status: 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED'; attempts: number; lastError: string | null; nextAttemptAt: string | null; sentAt: string | null }>;
 }
-export type VerificationMethod = 'LAST_NAME' | 'PHONE_LAST4' | 'PIN';
-export interface SeasonTicket { id: string; seasonKey: string; cardNumber: string; active: boolean; verificationMethod: VerificationMethod | null; validFrom: string | null; validUntil: string | null; }
+export type VerificationMethod = 'FULL_NAME' | 'LAST_NAME' | 'PHONE_LAST4' | 'PIN';
+export interface SeasonTicket { id: string; seasonKey: string; cardNumber: string; fullName: string | null; active: boolean; verificationMethod: VerificationMethod | null; validFrom: string | null; validUntil: string | null; }
 export const checkoutMessageKeys: Record<string, TranslationKey> = {
   PRICE_CHANGED: 'shop.priceChanged',
   VARIANT_UNAVAILABLE: 'shop.variantUnavailable',

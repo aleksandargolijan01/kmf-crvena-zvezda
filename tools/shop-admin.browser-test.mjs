@@ -57,6 +57,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 let browser;
 let testPage;
 const browserErrors = [];
+let deleteCalls = 0;
 try {
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -66,6 +67,7 @@ try {
     const requestUrl = new URL(route.request().url());
     if (requestUrl.origin === base) return route.continue();
     if (requestUrl.pathname.startsWith('/admin/shop/products')) {
+      if (route.request().method() === 'DELETE') deleteCalls++;
       const result = await route.fetch({ url: `${apiBase}${requestUrl.pathname}${requestUrl.search}` });
       return route.fulfill({ response: result });
     }
@@ -148,6 +150,47 @@ try {
     return box.left >= 0 && box.right <= window.innerWidth;
   })), true, 'mobile cards and form controls must fit the viewport, even when the body clips overflow');
   if (artifactDir) await page.screenshot({ path: path.join(artifactDir, 'shop-mobile.png'), fullPage: true });
+  // Exercise the actual Angular -> HTTP -> Nest -> Prisma delete path.
+  await db.product.update({ where: { id: saved.id }, data: { active: true } });
+  await page.reload();
+  await page.getByLabel('Претрага по називу').fill(saved.nameSr); await page.getByLabel('Претрага по називу').press('Enter');
+  const row = page.locator('tbody tr').filter({ hasText: saved.nameSr });
+  await row.getByRole('button', { name: 'Обриши', exact: true }).waitFor();
+  page.once('dialog', dialog => dialog.dismiss());
+  await row.getByRole('button', { name: 'Обриши', exact: true }).click();
+  assert.equal(deleteCalls, 0); assert.ok(await db.product.findUnique({ where: { id: saved.id } }));
+  page.once('dialog', dialog => dialog.accept());
+  const deleted = page.waitForResponse(response => response.request().method() === 'DELETE' && response.url().includes(saved.id));
+  await row.getByRole('button', { name: 'Обриши', exact: true }).click();
+  assert.equal((await deleted).status(), 200);
+  await page.getByText('Производ је обрисан.', { exact: true }).waitFor();
+  await row.waitFor({ state: 'detached' });
+  assert.equal(await db.product.findUnique({ where: { id: saved.id } }), null);
+  assert.equal(await db.productVariant.count({ where: { productId: saved.id } }), 0);
+  assert.equal(await db.productImage.count({ where: { productId: saved.id } }), 0);
+  assert.deepEqual(await db.mediaFile.findUnique({ where: { id: media.id } }), media);
+  const ordered = await db.product.create({ data: { nameSr: `Наручен производ ${Date.now()}`, slug: `ordered-${Date.now()}`, descriptionSr: 'Опис', priceMinor: 100, active: true, variants: { create: { size: 'M' } } }, include: { variants: true } });
+  await page.reload();
+  await page.getByLabel('Претрага по називу').fill(ordered.nameSr); await page.getByLabel('Претрага по називу').press('Enter');
+  const orderedRow = page.locator('tbody tr').filter({ hasText: ordered.nameSr });
+  await orderedRow.getByRole('button', { name: 'Обриши', exact: true }).waitFor();
+  // The list is intentionally stale: the order arrives after canDelete was read.
+  const order = await db.order.create({ data: { orderNumber: `CZ-BROWSER-${Date.now()}`, firstName: 'Тест', lastName: 'Купац', phone: '000', address: 'Тест', city: 'Београд', postalCode: '11000', subtotalMinor: 100, discountMinor: 0, discountPercent: 0, totalMinor: 100,
+    items: { create: { productId: ordered.id, variantId: ordered.variants[0].id, productName: ordered.nameSr, productSlug: ordered.slug, size: 'M', quantity: 1, unitPriceMinor: 100, subtotalMinor: 100, discountMinor: 0, finalMinor: 100 } }, statusHistory: { create: { status: 'NEW' } } }, include: { items: true, statusHistory: true } });
+  page.once('dialog', dialog => dialog.accept());
+  const rejected = page.waitForResponse(response => response.request().method() === 'DELETE' && response.url().includes(ordered.id));
+  await orderedRow.getByRole('button', { name: 'Обриши', exact: true }).click();
+  assert.equal((await rejected).status(), 409);
+  const historyMessage = 'Производ не може бити обрисан јер постоји у постојећим поруџбинама. Можете га деактивирати.';
+  await page.getByText(historyMessage, { exact: true }).waitFor();
+  assert.deepEqual(await db.order.findUnique({ where: { id: order.id }, include: { items: true, statusHistory: true } }), order);
+  await page.reload(); await page.getByLabel('Претрага по називу').fill(ordered.nameSr); await page.getByLabel('Претрага по називу').press('Enter');
+  await orderedRow.getByRole('button', { name: 'Обриши', exact: true }).click();
+  await page.getByText(historyMessage, { exact: true }).waitFor();
+  assert.equal(deleteCalls, 2, 'known history shows feedback without sending another DELETE');
+  await orderedRow.getByRole('button', { name: 'Деактивирај', exact: true }).click();
+  await orderedRow.getByRole('button', { name: 'Активирај', exact: true }).waitFor();
+  assert.equal((await db.product.findUniqueOrThrow({ where: { id: ordered.id } })).active, false);
   assert.deepEqual(errors, []);
   // Recreate a context so role restrictions are exercised from a clean session.
   const editor = await browser.newContext();
@@ -161,7 +204,7 @@ try {
   await editorPage.goto(`${base}/admin/shop/products`);
   await editorPage.waitForURL('**/admin/forbidden');
   assert.equal(await editorPage.getByText('ПРОДАВНИЦА', { exact: true }).count(), 0);
-  console.log('PASS: CMS create/update, exact price, cover/gallery, stable sizes, 390px layout, EDITOR guard/sidebar.');
+  console.log('PASS: CMS create/update/translation, 390px layout, delete cancel/success/409/history/deactivation, owned cascades/media protection, EDITOR guard/sidebar.');
 } catch (error) {
   if (testPage) {
     console.error('Browser URL:', testPage.url());

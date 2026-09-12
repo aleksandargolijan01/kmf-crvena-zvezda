@@ -11,7 +11,7 @@ import { SeoService } from '../../core/seo/seo.service';
   @if (loading()) { <p role="status">{{ i18n.t('shop.checkingReceipt') }}</p> }
   @else if (receipt(); as receipt) { <h2>{{ i18n.t('shop.orderReceived') }}</h2><p>{{ i18n.t('shop.orderThanks') }}</p><p>{{ i18n.t('shop.orderNumber') }} <strong>{{ receipt.orderNumber }}</strong></p><p>{{ i18n.t('shop.status') }} {{ i18n.t(labels[receipt.status]) }}</p><p>{{ i18n.t('shop.productTotalLabel') }} <strong>{{ money(receipt.totalMinor) }}</strong></p><p>{{ i18n.t('shop.receiptPayment') }}</p><p>{{ i18n.t('shop.confirmationEmail') }}</p> }
   @else { <p>{{ i18n.t('shop.receiptUnavailable') }}</p><button class="btn btn-primary" (click)="load()">{{ i18n.t('shop.retry') }}</button> }
-  <a class="btn btn-primary" routerLink="/prodavnica">{{ i18n.t('shop.viewShop') }}</a> <a class="btn" routerLink="/">{{ i18n.t('shop.backHome') }}</a></div></section></main>` })
+  <div class="shop-success-actions"><a class="btn btn-primary" routerLink="/prodavnica">{{ i18n.t('shop.viewShop') }}</a><a class="btn" routerLink="/">{{ i18n.t('shop.backHome') }}</a></div></div></section></main>` })
 export class OrderSuccessComponent {
   readonly i18n = inject(TranslationService);
   private readonly api = inject(CheckoutApiService);

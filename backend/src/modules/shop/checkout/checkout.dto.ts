@@ -1,6 +1,6 @@
 import { Type, Transform } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEmail, IsEnum, IsISO8601, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf, ValidateNested } from 'class-validator';
-import { OrderSource, OrderStatus, SeasonTicketVerificationMethod } from '@prisma/client';
+import { OrderSource, OrderStatus } from '@prisma/client';
 import { IsDefined } from 'class-validator';
 const trim = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value;
 export class CartLineDto {
@@ -30,8 +30,9 @@ export class ManualOrderDto extends CreateOrderDto {
   @IsIn(['INSTAGRAM', 'PHONE', 'IN_PERSON', 'ADMIN']) source!: OrderSource;
 }
 export class TicketValidationDto {
-  @Transform(trim) @IsString() @MinLength(1) @MaxLength(100) cardNumber!: string;
-  @IsString() @MinLength(1) @MaxLength(120) verificationValue!: string;
+  // Strict end-of-input: unlike $, this also rejects a trailing line break.
+  @IsString() @Matches(/^[0-9]+(?![\s\S])/) @MaxLength(100) cardNumber!: string;
+  @Transform(trim) @IsString() @MinLength(1) @MaxLength(200) fullName!: string;
 }
 export class ReceiptDto { @IsString() @MinLength(1) @MaxLength(3000) receiptToken!: string; }
 export class RecoverOrderDto { @IsString() @Matches(/^[a-zA-Z0-9_-]{32,128}$/) idempotencyKey!: string; }
@@ -43,11 +44,10 @@ export class ShopListDto {
   @IsOptional() @IsEnum(OrderStatus) status?: OrderStatus;
 }
 export class TicketWriteDto {
-  @Transform(trim) @IsString() @MinLength(1) @MaxLength(100) cardNumber!: string;
+  @IsString() @Matches(/^[0-9]+(?![\s\S])/) @MaxLength(100) cardNumber!: string;
+  @Transform(trim) @IsString() @MinLength(1) @MaxLength(200) fullName!: string;
   @Transform(trim) @IsString() @MinLength(1) @MaxLength(80) seasonKey!: string;
   @IsBoolean() active!: boolean;
   @IsOptional() @IsISO8601({ strict: true }) validFrom?: string | null;
   @IsOptional() @IsISO8601({ strict: true }) validUntil?: string | null;
-  @IsOptional() @IsEnum(SeasonTicketVerificationMethod) verificationMethod?: SeasonTicketVerificationMethod | null;
-  @IsOptional() @IsString() @MaxLength(120) verificationValue?: string;
 }

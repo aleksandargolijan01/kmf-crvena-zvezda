@@ -14,6 +14,7 @@ import { ShopPricingService } from './shop-pricing.service';
 import { ShopOrdersService } from '../orders/shop-orders.service';
 import { SeasonTicketsService } from '../season-tickets/season-tickets.service';
 import { shopError } from './shop-errors';
+import { TicketValidationDto, TicketWriteDto } from './checkout.dto';
 
 describe('Checkout HTTP validation, privacy, roles and throttling', () => {
   let app: INestApplication;
@@ -35,6 +36,15 @@ describe('Checkout HTTP validation, privacy, roles and throttling', () => {
     await app.init();
   });
   afterAll(async () => { await app.close(); });
+  it('accepts only string ASCII card numbers, preserves zeros and rejects legacy credential fields', async () => {
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    for (const metatype of [TicketValidationDto, TicketWriteDto]) {
+      const base = { fullName: 'Тест Купац', ...(metatype === TicketWriteDto ? { seasonKey: 'TEST', active: true } : {}) };
+      expect(await pipe.transform({ ...base, cardNumber: '000123' }, { type: 'body', metatype })).toMatchObject({ cardNumber: '000123' });
+      for (const cardNumber of ['', 'A123', '12 34', ' 123', '123 ', '12-34', '１２３', 123]) await expect(pipe.transform({ ...base, cardNumber }, { type: 'body', metatype })).rejects.toThrow();
+      for (const extra of [{ verificationValue: '1234' }, { verificationMethod: 'PIN' }, { fullName: '   ' }]) await expect(pipe.transform({ ...base, cardNumber: '000123', ...extra }, { type: 'body', metatype })).rejects.toThrow();
+    }
+  });
   it.each(['ADMIN', 'SUPER_ADMIN'])('allows %s on every order and ticket endpoint', async (role) => {
     const token = jwt.sign({ sub: role, type: 'access' });
     for (const path of ['/admin/shop/orders', '/admin/shop/orders/test', '/admin/shop/season-tickets']) await request(app.getHttpServer()).get(path).auth(token, { type: 'bearer' }).expect(200);
@@ -42,7 +52,7 @@ describe('Checkout HTTP validation, privacy, roles and throttling', () => {
     expect(orders.create).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'PHONE' }), 'PHONE', role);
     await request(app.getHttpServer()).patch('/admin/shop/orders/test/status').auth(token, { type: 'bearer' }).send({ status: 'CONFIRMED' }).expect(200);
     await request(app.getHttpServer()).post('/admin/shop/orders/test/emails/email/retry').auth(token, { type: 'bearer' }).expect(201);
-    const ticket = { cardNumber: 'TEST', seasonKey: 'TEST', active: false };
+    const ticket = { cardNumber: '000123', fullName: 'Тест Купац', seasonKey: 'TEST', active: false };
     await request(app.getHttpServer()).post('/admin/shop/season-tickets').auth(token, { type: 'bearer' }).send(ticket).expect(201);
     await request(app.getHttpServer()).patch('/admin/shop/season-tickets/test').auth(token, { type: 'bearer' }).send(ticket).expect(200);
   });
@@ -62,14 +72,16 @@ describe('Checkout HTTP validation, privacy, roles and throttling', () => {
     await request(app.getHttpServer()).post('/shop/orders').send(payload).expect(201);
     await request(app.getHttpServer()).post('/shop/cart/quote').send({ items: payload.items }).expect(201).expect('Cache-Control', 'no-store');
     await request(app.getHttpServer()).post('/shop/cart/quote').send({ items: [{ variantId: 'v1', quantity: 1, priceMinor: 1 }] }).expect(400);
+    await request(app.getHttpServer()).post('/shop/cart/quote').send({ items: payload.items, discountPercent: 20 }).expect(400);
+    await request(app.getHttpServer()).post('/shop/orders').send({ ...payload, discountPercent: 20 }).expect(400);
   });
   it('returns a generic ticket error and throttles the sixth attempt per IP', async () => {
     for (let index = 0; index < 5; index++) {
-      const response = await request(app.getHttpServer()).post('/shop/season-ticket/validate').send({ cardNumber: 'TEST', verificationValue: 'secret' }).expect(400);
+      const response = await request(app.getHttpServer()).post('/shop/season-ticket/validate').send({ cardNumber: '000123', fullName: 'Тест Купац' }).expect(400);
       expect(response.body.code).toBe('SEASON_TICKET_INVALID');
-      expect(JSON.stringify(response.body)).not.toMatch(/secret|hash|TEST/);
+      expect(JSON.stringify(response.body)).not.toMatch(/000123|Купац|hash/);
     }
-    const response = await request(app.getHttpServer()).post('/shop/season-ticket/validate').send({ cardNumber: 'TEST', verificationValue: 'secret' }).expect(429);
+    const response = await request(app.getHttpServer()).post('/shop/season-ticket/validate').send({ cardNumber: '000123', fullName: 'Тест Купац' }).expect(429);
     expect(response.body.code).toBe('RATE_LIMITED'); expect(tickets.validate).toHaveBeenCalledTimes(5);
   });
   it('contains unexpected database errors without leaking customer data or stack', async () => {

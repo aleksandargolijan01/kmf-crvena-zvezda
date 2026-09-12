@@ -1,5 +1,7 @@
 // Shop UI keys are part of the site-wide TranslationService dictionary.
 export const shopSr = {
+  "shop.ticketFullName": "Име и презиме",
+  "shop.ticketNumberInvalid": "Број сезонске карте мора садржати само цифре 0–9.",
   "shop.brand": "КМФ Црвена звезда",
   "shop.perItem": "по комаду",
   "shop.soldOutSuffix": " — Распродато",
@@ -154,7 +156,7 @@ export const shopSr = {
   "shop.cartRecovered": "Сачувана корпа није исправна или је из старије верзије. Можете поново додати производе.",
   "shop.sourceWebsite": "Сајт",
   "shop.allSizesUnavailable": "Све величине су тренутно недоступне.",
-  "shop.ticketInvalid": "Сезонска карта није пронађена или није важећа. Проверите унете податке.",
+  "shop.ticketInvalid": "Подаци сезонске карте нису исправни или карта није активна.",
   "shop.ticketVerified": "Сезонска карта је потврђена. Остварили сте 20% попуста.",
   "shop.nextProducts": "Следећи производи",
   "shop.decreaseQuantity": "Смањи количину",
@@ -173,7 +175,7 @@ export const shopSr = {
   "shop.productTotalLabel": "Укупно за производе:",
   "shop.invalidField": "Унесите исправан податак.",
   "shop.invalidEmail": "Унесите исправну имејл адресу.",
-  "shop.ticketVerificationHelp": "Унесите податак који је клуб одредио за вашу карту: презиме, последње четири цифре телефона или ПИН.",
+  "shop.ticketVerificationHelp": "Унесите име и презиме власника и број сезонске карте из евиденције клуба. Број мора садржати само цифре, укључујући водеће нуле.",
   "shop.checkoutIntro": "Унесите податке за доставу и потврдите поруџбину.",
   "shop.invalidPostalCode": "Унесите тачно 5 цифара.",
   "shop.loadingProducts": "Учитавање производа…",
@@ -194,6 +196,8 @@ export const shopSr = {
 } as const;
 
 export const shopEn = {
+  "shop.ticketFullName": "Full name",
+  "shop.ticketNumberInvalid": "The season ticket number must contain digits 0–9 only.",
   "shop.brand": "KMF Crvena zvezda",
   "shop.perItem": "each",
   "shop.soldOutSuffix": " — Sold out",
@@ -348,7 +352,7 @@ export const shopEn = {
   "shop.cartRecovered": "Your saved cart is invalid or from an older version. You can add your products again.",
   "shop.sourceWebsite": "Website",
   "shop.allSizesUnavailable": "All sizes are currently unavailable.",
-  "shop.ticketInvalid": "Your season ticket was not found or is no longer valid. Check your details.",
+  "shop.ticketInvalid": "The season ticket details are incorrect or the ticket is not active.",
   "shop.ticketVerified": "Season ticket verified. Your 20% discount has been applied.",
   "shop.nextProducts": "Next products",
   "shop.decreaseQuantity": "Decrease quantity",
@@ -367,7 +371,7 @@ export const shopEn = {
   "shop.productTotalLabel": "Product total:",
   "shop.invalidField": "Please enter a valid value.",
   "shop.invalidEmail": "Please enter a valid email address.",
-  "shop.ticketVerificationHelp": "Enter the detail assigned by the club for your ticket: your last name, the last four digits of your phone number, or a PIN.",
+  "shop.ticketVerificationHelp": "Enter the holder’s full name and season ticket number as registered with the club. Use digits only, including any leading zeros.",
   "shop.checkoutIntro": "Enter your delivery details and confirm your order.",
   "shop.invalidPostalCode": "Enter exactly 5 digits.",
   "shop.loadingProducts": "Loading products…",
@@ -388,6 +392,8 @@ export const shopEn = {
 } satisfies Record<keyof typeof shopSr, string>;
 
 export const shopRu = {
+  "shop.ticketFullName": "Имя и фамилия",
+  "shop.ticketNumberInvalid": "Номер абонемента должен содержать только цифры 0–9.",
   "shop.brand": "КМФ Црвена звезда",
   "shop.perItem": "за штуку",
   "shop.soldOutSuffix": " — Нет в наличии",
@@ -542,7 +548,7 @@ export const shopRu = {
   "shop.cartRecovered": "Сохранённая корзина повреждена или создана в старой версии. Добавьте товары заново.",
   "shop.sourceWebsite": "Сайт",
   "shop.allSizesUnavailable": "Все размеры сейчас недоступны.",
-  "shop.ticketInvalid": "Абонемент не найден или недействителен. Проверьте введённые данные.",
+  "shop.ticketInvalid": "Данные абонемента неверны или абонемент неактивен.",
   "shop.ticketVerified": "Абонемент подтверждён. Скидка 20% применена.",
   "shop.nextProducts": "Следующие товары",
   "shop.decreaseQuantity": "Уменьшить количество",
@@ -561,7 +567,7 @@ export const shopRu = {
   "shop.productTotalLabel": "Сумма за товары:",
   "shop.invalidField": "Введите корректные данные.",
   "shop.invalidEmail": "Введите корректный адрес электронной почты.",
-  "shop.ticketVerificationHelp": "Введите данные, назначенные клубом для вашего абонемента: фамилию, последние четыре цифры телефона или ПИН-код.",
+  "shop.ticketVerificationHelp": "Введите имя и фамилию владельца и номер абонемента из реестра клуба. Номер должен содержать только цифры, включая нули в начале.",
   "shop.checkoutIntro": "Введите данные для доставки и подтвердите заказ.",
   "shop.invalidPostalCode": "Введите ровно 5 цифр.",
   "shop.loadingProducts": "Загружаем товары…",

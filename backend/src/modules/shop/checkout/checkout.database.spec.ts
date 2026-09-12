@@ -25,7 +25,7 @@ suite('Checkout transactions against isolated PostgreSQL', () => {
   const customer = { firstName: 'Тест', lastName: 'Купац', phone: '+381601234567', email: 'customer@example.invalid', address: 'Тест улица 1', city: 'Београд', postalCode: '11000', note: '<b>Напомена</b>' };
   const items = () => product.variants.map(variant => ({ variantId: variant.id, quantity: 1 }));
   const request = async (seasonTicketToken?: string): Promise<CreateOrderDto> => ({ items: items(), customer, idempotencyKey: randomUUID(), quoteToken: (await pricing.quote({ items: items(), seasonTicketToken })).quoteToken, seasonTicketToken });
-  const ticketInput = (verificationMethod: 'PIN' | 'LAST_NAME' | 'PHONE_LAST4' = 'PIN', verificationValue = '4938') => ({ cardNumber: `TEST-${randomUUID()}`, seasonKey: 'TEST-ONLY', active: true, verificationMethod, verificationValue });
+  const ticketInput = (fullName = 'Тест Купац') => ({ cardNumber: `00${BigInt('0x' + randomUUID().replace(/-/g, '')).toString()}`, seasonKey: 'TEST-ONLY', active: true, fullName });
   beforeAll(async () => {
     db = new PrismaClient({ datasources: { db: { url: databaseUrl! } } }); await db.$connect();
     tickets = new SeasonTicketsService(db as PrismaService, config, tokens);
@@ -45,12 +45,14 @@ suite('Checkout transactions against isolated PostgreSQL', () => {
     await db.product.update({ where: { id: product.id }, data: { priceMinor: 2147483647 } });
     await expect(pricing.quote({ items: items() })).rejects.toMatchObject({ response: { code: 'INVALID_INPUT' } });
   });
-  it.each([['PIN', '4938', '4938'], ['LAST_NAME', ' ПЕТРОВИЋ ', 'петровић'], ['PHONE_LAST4', '0123', '0123']] as const)('validates %s, protects its verifier and gives exactly 20%% without usage limit', async (method, value, candidate) => {
-    const input = ticketInput(method, value), safe = await tickets.write(input);
+  it.each([['Тест Купац', 'Тест Купац'], [' ПЕТАР   ПЕТРОВИЋ ', '  петар  петровић  '], ['Petar Petrović', 'PETAR PETROVIĆ']] as const)('validates %s with exact normalized name and gives exactly 20%% without usage limit', async (value, candidate) => {
+    const input = ticketInput(value), safe = await tickets.write(input);
     expect(safe).not.toHaveProperty('verifierHash'); expect(safe).not.toHaveProperty('verifierKeyVersion');
     const stored = await db.seasonTicket.findUniqueOrThrow({ where: { id: safe.id } });
     expect(stored.verifierHash).toMatch(/^\$2[aby]\$12\$/); expect(stored.verifierHash).not.toContain(value);
-    const validated = await tickets.validate({ cardNumber: input.cardNumber, verificationValue: candidate });
+    expect(stored.cardNumber).toBe(input.cardNumber); expect(stored.verificationMethod).toBe('FULL_NAME');
+    const validated = await tickets.validate({ cardNumber: input.cardNumber, fullName: candidate });
+    expect(Object.keys(validated).sort()).toEqual(['discountPercent', 'expiresIn', 'seasonTicketToken', 'valid']);
     const quote = await pricing.quote({ items: items(), seasonTicketToken: validated.seasonTicketToken });
     expect(quote.discountPercent).toBe(20); expect(quote.discountMinor).toBe(40001); expect(quote.totalMinor).toBe(160005);
     expect(quote.items.reduce((sum, line) => sum + line.discountMinor, 0)).toBe(quote.discountMinor);
@@ -61,23 +63,47 @@ suite('Checkout transactions against isolated PostgreSQL', () => {
   });
   it('uses one generic error for unknown, expired, inactive and mismatched cards', async () => {
     const input = ticketInput(), ticket = await tickets.write(input);
-    for (const dto of [{ cardNumber: 'UNKNOWN-TEST', verificationValue: '4938' }, { cardNumber: input.cardNumber, verificationValue: 'wrong' }]) await expect(tickets.validate(dto)).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
-    for (const data of [{ active: false }, { active: true, validUntil: new Date('2000-01-01') }, { validUntil: null, validFrom: new Date('2100-01-01') }]) {
+    for (const dto of [{ cardNumber: '999999', fullName: input.fullName }, ...['Погрешно Име', 'Купац Тест', 'Test Kupac', 'Тест Купа'].map(fullName => ({ cardNumber: input.cardNumber, fullName }))]) await expect(tickets.validate(dto)).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    for (const data of [{ active: false }, { active: true, validUntil: new Date('2000-01-01') }, { validUntil: null, validFrom: new Date('2100-01-01') }, { validFrom: null, seasonKey: 'OLD-SEASON' }]) {
       await db.seasonTicket.update({ where: { id: ticket.id }, data });
-      await expect(tickets.validate({ cardNumber: input.cardNumber, verificationValue: '4938' })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+      await expect(tickets.validate({ cardNumber: input.cardNumber, fullName: input.fullName })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
     }
   });
-  it('keeps blank verifier edits, rehashes replacement, revokes tokens and never exposes hashes in lists', async () => {
+  it('rehashes name edits, revokes tokens and never exposes hashes in admin lists', async () => {
     const input = ticketInput(), ticket = await tickets.write(input);
-    const token = (await tickets.validate({ cardNumber: input.cardNumber, verificationValue: '4938' })).seasonTicketToken;
+    const token = (await tickets.validate(input)).seasonTicketToken;
     const before = await db.seasonTicket.findUniqueOrThrow({ where: { id: ticket.id } });
-    await tickets.write({ ...input, verificationValue: '' }, ticket.id);
-    expect((await db.seasonTicket.findUniqueOrThrow({ where: { id: ticket.id } })).verifierHash).toBe(before.verifierHash);
+    await expect(tickets.write({ ...input, fullName: '' }, ticket.id)).rejects.toThrow();
+    await tickets.write({ ...input, fullName: 'Нови Власник' }, ticket.id);
     await expect(pricing.quote({ items: items(), seasonTicketToken: token })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
-    await tickets.write({ ...input, verificationValue: 'new-secret' }, ticket.id);
     expect((await db.seasonTicket.findUniqueOrThrow({ where: { id: ticket.id } })).verifierHash).not.toBe(before.verifierHash);
-    expect(JSON.stringify(await tickets.list({ page: 1, limit: 20, search: input.cardNumber }))).not.toMatch(/verifierHash|verifierKeyVersion|new-secret|4938/);
-    await expect(tickets.write({ ...input, verificationMethod: 'PHONE_LAST4', verificationValue: '' }, ticket.id)).rejects.toThrow();
+    expect(JSON.stringify(await tickets.list({ page: 1, limit: 20, search: input.cardNumber }))).not.toMatch(/verifierHash|verifierKeyVersion/);
+    await expect(tickets.validate(input)).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    expect((await tickets.validate({ ...input, fullName: 'НОВИ ВЛАСНИК' })).valid).toBe(true);
+  });
+  it('keeps legacy records unusable until an administrator completes them', async () => {
+    const input = ticketInput(), ticket = await tickets.write(input);
+    for (const cardNumber of [input.cardNumber, 'OLD-' + ticket.id]) {
+      await db.seasonTicket.update({ where: { id: ticket.id }, data: { fullName: null, verificationMethod: 'PIN', cardNumber } });
+      await expect(tickets.validate({ fullName: input.fullName, cardNumber })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+      await expect(pricing.quote({ items: items(), seasonTicketToken: tokens.sign('season-ticket', { id: ticket.id, version: 1 }, 600) })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    }
+    await tickets.write(input, ticket.id);
+    expect((await tickets.validate(input)).valid).toBe(true);
+  });
+  it.each([{ active: false }, { seasonKey: 'OLD' }, { validUntil: new Date('2000-01-01') }, { version: 99 }])('rechecks ticket state at quote and order creation: %j', async data => {
+    const input = ticketInput(), ticket = await tickets.write(input);
+    const token = (await tickets.validate(input)).seasonTicketToken, dto = await request(token);
+    const before = await db.order.count();
+    await db.seasonTicket.update({ where: { id: ticket.id }, data });
+    await expect(pricing.quote({ items: items(), seasonTicketToken: token })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    await expect(orders.create(dto)).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    expect(await db.order.count()).toBe(before);
+  });
+  it('rejects forged ticket tokens at both quote and order', async () => {
+    const dto = await request();
+    await expect(pricing.quote({ items: items(), seasonTicketToken: 'forged' })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    await expect(orders.create({ ...dto, seasonTicketToken: 'forged' })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
   });
   it('rejects price changes with a new quote and keeps the same attempt retryable', async () => {
     const dto = await request();

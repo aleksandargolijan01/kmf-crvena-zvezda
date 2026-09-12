@@ -28,7 +28,9 @@
           <fieldset [disabled]="busy() || recovering() || uncertain() || ticketBusy()"><legend>{{ i18n.t('shop.haveTicket') }}</legend><p>{{ i18n.t('shop.orderTicketBenefit') }}</p>
             <label class="check"><input type="checkbox" [checked]="ticketEnabled()" (change)="toggleTicket($any($event.target).checked)" /> {{ i18n.t('shop.ticketCheckbox') }}</label>
             @if (ticketEnabled()) {
-              <div [formGroup]="ticket"><label>{{ i18n.t('shop.ticketNumber') }}<input formControlName="cardNumber" maxlength="100" autocomplete="off" /></label><label>{{ i18n.t('shop.verificationDetails') }}<input type="password" formControlName="verificationValue" maxlength="120" autocomplete="off" /></label><p>{{ i18n.t('shop.ticketVerificationHelp') }}</p></div>
+              <div [formGroup]="ticket"><label>{{ i18n.t('shop.ticketFullName') }}<input formControlName="fullName" maxlength="200" autocomplete="off" required /></label><label>{{ i18n.t('shop.ticketNumber') }}<input type="text" formControlName="cardNumber" inputmode="numeric" pattern="[0-9]+" maxlength="100" autocomplete="off" required /></label><p>{{ i18n.t('shop.ticketVerificationHelp') }}</p>
+                @if (ticket.controls.cardNumber.dirty && ticket.controls.cardNumber.invalid) { <p class="error" role="alert">{{ i18n.t('shop.ticketNumberInvalid') }}</p> }
+              </div>
               <button type="button" (click)="validateTicket()" [disabled]="ticket.invalid || ticketBusy()">{{ ticketBusy() ? i18n.t('shop.checking') : i18n.t('shop.verifyTicket') }}</button>
               @if (ticketError()) { <p class="error" role="alert">{{ i18n.t(ticketError() || 'shop.empty') }}</p> }
               @if (ticketToken()) { <p role="status">{{ i18n.t('shop.ticketVerified') }}</p> }

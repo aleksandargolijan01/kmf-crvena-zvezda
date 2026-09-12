@@ -57,8 +57,10 @@ test('quote and receipt API put private context only in POST bodies; API never i
   const api = injector.get(CheckoutApiService);
   await firstValueFrom(api.quote([{ variantId: 'v1', quantity: 2 }], 'ticket-token'));
   await firstValueFrom(api.receipt('secret-receipt')); await firstValueFrom(api.recover('opaque-idempotency-key'));
+  await firstValueFrom(api.validateTicket('000123', 'Тест Власник'));
+  assert.deepEqual(calls[3].body, { cardNumber: '000123', fullName: 'Тест Власник' });
   assert.deepEqual(calls[0].body, { items: [{ variantId: 'v1', quantity: 2 }], seasonTicketToken: 'ticket-token' });
-  assert.ok(calls.every(call => !/ticket-token|secret-receipt|opaque-idempotency-key/.test(call.url)));
+  assert.ok(calls.every(call => !/ticket-token|secret-receipt|opaque-idempotency-key|000123|Власник/.test(call.url)));
   injector.destroy();
 });
 test('stable checkout errors are Cyrillic and raw server messages never reach the UI', () => {

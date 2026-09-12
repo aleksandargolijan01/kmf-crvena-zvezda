@@ -71,4 +71,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px s
   .cart-row img { width: 80px; }
   .cart-summary { padding: 20px; }
 }
+.shop-success-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 24px; }
+.shop-success-actions .btn { max-width: 100%; white-space: normal; }
+@media (max-width: 540px) { .shop-success-actions .btn { flex: 1 1 100%; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

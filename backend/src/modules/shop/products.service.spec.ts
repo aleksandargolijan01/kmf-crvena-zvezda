@@ -110,12 +110,16 @@ describe('ProductsService', () => {
     expect(result.availableForOrder).toBe(false);
   });
 
-  it('deletes only inactive unused products and blocks existing order references', async () => {
-    db.product.findUnique.mockResolvedValueOnce({ ...product(), active: true });
-    await expect(service.remove('p1')).rejects.toBeInstanceOf(ConflictException);
+  it('blocks existing order references with an actionable error', async () => {
     db.orderItem.count.mockResolvedValueOnce(1);
-    await expect(service.remove('p1')).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.remove('p1')).rejects.toThrow('Производ не може бити обрисан јер постоји у постојећим поруџбинама. Можете га деактивирати.');
     expect(db.product.delete).not.toHaveBeenCalled();
+  });
+  it.each([true, false])('allows unused product deletion when active=%s', async active => {
+    db.product.findUnique.mockResolvedValue({ ...product(), active });
+    expect((await service.findAdminById('p1')).canDelete).toBe(true);
     await expect(service.remove('p1')).resolves.toEqual({ success: true });
+    expect(db.product.delete).toHaveBeenCalledWith({ where: { id: 'p1' } });
+    expect(db.orderItem.count).toHaveBeenCalledWith({ where: { OR: [{ productId: 'p1' }, { variant: { productId: 'p1' } }] } });
   });
 });

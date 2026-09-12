@@ -220,24 +220,31 @@ export class ProductsAdminComponent implements OnInit {
   }
 
   remove(item: AdminProduct) {
-    if (this.busy || !item.canDelete || !this.allowDiscard() || !confirm(`Обрисати производ „${item.nameSr}“?`)) return;
+    if (this.busy || this.loading) return;
+    if (!item.canDelete) {
+      this.toasts.error('Производ не може бити обрисан јер постоји у постојећим поруџбинама. Можете га деактивирати.');
+      return;
+    }
+    if (!this.allowDiscard() || !confirm(`Обрисати производ „${item.nameSr}“?`)) return;
     this.saving = true;
     this.api.remove(item.id).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => { this.saving = false; this.changeDetector.markForCheck(); })).subscribe({
       next: () => {
         if (this.selected?.id === item.id) { this.selected = null; this.form.reset(); this.variants.clear(); this.gallery = []; this.cover = null; }
         this.toasts.success('Производ је обрисан.');
         if (this.items.length === 1 && this.query.page > 1) this.query.page--;
+        this.items = this.items.filter(product => product.id !== item.id);
+        this.total = Math.max(0, this.total - 1);
         this.load();
       },
-      error: (error: HttpErrorResponse) => this.toasts.error(this.errorMessage(error))
+      error: (error: HttpErrorResponse) => this.toasts.error(this.errorMessage(error, 'Брисање није успело. Покушајте поново.'))
     });
   }
 
   private allowDiscard() { return !this.form.dirty || confirm('Одбацити несачуване измене?'); }
-  private errorMessage(error: HttpErrorResponse) {
+  private errorMessage(error: HttpErrorResponse, fallback = 'Чување није успело. Проверите податке и покушајте поново.') {
     const message: unknown = error.error?.message;
     return typeof message === 'string' && /[А-Яа-яЂђЋћЈјЉљЊњЏџ]/.test(message)
-      ? message : error.status === 429 ? 'Превише захтева. Сачекајте и покушајте поново.' : 'Чување није успело. Проверите податке и покушајте поново.';
+      ? message : error.status === 429 ? 'Превише захтева. Сачекајте и покушајте поново.' : fallback;
   }
   private localDateTime(value: string) {
     const date = new Date(value);
