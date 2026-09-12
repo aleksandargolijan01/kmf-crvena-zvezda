@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { MailService } from '../../mail/mail.service';
 import { orderEmailText } from './order-email.template';
@@ -32,7 +33,9 @@ export class OrderEmailWorkerService implements OnModuleInit, OnModuleDestroy {
         ) RETURNING "id"
       `;
       if (!rows.length) return;
-      const email = await this.db.orderEmail.findUnique({ where: { id: rows[0].id }, include: { order: { include: { items: true } } } });
+      // Prisma can load includes in separate queries. Use one consistent snapshot
+      // if an administrator deletes the order between those reads; never lock over SMTP.
+      const email = await this.db.$transaction(tx => tx.orderEmail.findUnique({ where: { id: rows[0].id }, include: { order: { include: { items: true } } } }), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
       if (!email || email.lockToken !== lockToken) return;
       const where = { id: email.id, lockToken, status: 'PROCESSING' as const };
       try {

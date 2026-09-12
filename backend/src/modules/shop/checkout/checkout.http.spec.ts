@@ -19,9 +19,9 @@ import { TicketValidationDto, TicketWriteDto } from './checkout.dto';
 describe('Checkout HTTP validation, privacy, roles and throttling', () => {
   let app: INestApplication;
   const jwt = new JwtService({ secret: 'isolated-http-test-secret' });
-  const orders = { list: jest.fn().mockResolvedValue({ data: [] }), detail: jest.fn().mockResolvedValue({ id: 'test' }), create: jest.fn().mockResolvedValue({ orderNumber: 'CZ-TEST' }), status: jest.fn().mockResolvedValue({ status: 'CONFIRMED' }), retryEmail: jest.fn().mockResolvedValue({ success: true }), readReceipt: jest.fn().mockResolvedValue({}), recover: jest.fn().mockResolvedValue({ found: false }) };
+  const orders = { remove: jest.fn().mockResolvedValue({ success: true }), list: jest.fn().mockResolvedValue({ data: [] }), detail: jest.fn().mockResolvedValue({ id: 'test' }), create: jest.fn().mockResolvedValue({ orderNumber: 'CZ-TEST' }), status: jest.fn().mockResolvedValue({ status: 'CONFIRMED' }), retryEmail: jest.fn().mockResolvedValue({ success: true }), readReceipt: jest.fn().mockResolvedValue({}), recover: jest.fn().mockResolvedValue({ found: false }) };
   const pricing = { quote: jest.fn().mockResolvedValue({ totalMinor: 100 }) };
-  const tickets = { list: jest.fn().mockResolvedValue({ data: [] }), write: jest.fn().mockResolvedValue({ id: 'ticket' }), validate: jest.fn(() => shopError('SEASON_TICKET_INVALID', 400)) };
+  const tickets = { remove: jest.fn().mockResolvedValue({ success: true }), list: jest.fn().mockResolvedValue({ data: [] }), write: jest.fn().mockResolvedValue({ id: 'ticket' }), validate: jest.fn(() => shopError('SEASON_TICKET_INVALID', 400)) };
   const customer = { firstName: 'Тест', lastName: 'Купац', phone: '+381 601234567', email: 'test@example.invalid', address: 'Тест 1', city: 'Београд', postalCode: '11000' };
   const payload = { customer, items: [{ variantId: 'v1', quantity: 1 }], quoteToken: 'test', idempotencyKey: 'a'.repeat(32) };
   beforeAll(async () => {
@@ -52,15 +52,25 @@ describe('Checkout HTTP validation, privacy, roles and throttling', () => {
     expect(orders.create).toHaveBeenLastCalledWith(expect.objectContaining({ source: 'PHONE' }), 'PHONE', role);
     await request(app.getHttpServer()).patch('/admin/shop/orders/test/status').auth(token, { type: 'bearer' }).send({ status: 'CONFIRMED' }).expect(200);
     await request(app.getHttpServer()).post('/admin/shop/orders/test/emails/email/retry').auth(token, { type: 'bearer' }).expect(201);
+    for (const kind of ['orders', 'season-tickets']) await request(app.getHttpServer()).delete(`/admin/shop/${kind}/c${'a'.repeat(24)}`).auth(token, { type: 'bearer' }).expect(200);
     const ticket = { cardNumber: '000123', fullName: 'Тест Купац', seasonKey: 'TEST', active: false };
     await request(app.getHttpServer()).post('/admin/shop/season-tickets').auth(token, { type: 'bearer' }).send(ticket).expect(201);
     await request(app.getHttpServer()).patch('/admin/shop/season-tickets/test').auth(token, { type: 'bearer' }).send(ticket).expect(200);
   });
   it('rejects guests and EDITOR on all CMS routes', async () => {
     const token = jwt.sign({ sub: 'EDITOR', type: 'access' });
-    for (const [method, path] of [['get', 'orders'], ['get', 'orders/id'], ['post', 'orders'], ['patch', 'orders/id/status'], ['post', 'orders/id/emails/id/retry'], ['get', 'season-tickets'], ['post', 'season-tickets'], ['patch', 'season-tickets/id']] as const) {
+    for (const [method, path] of [['delete', 'orders/c' + 'a'.repeat(24)], ['delete', 'season-tickets/c' + 'a'.repeat(24)], ['get', 'orders'], ['get', 'orders/id'], ['post', 'orders'], ['patch', 'orders/id/status'], ['post', 'orders/id/emails/id/retry'], ['get', 'season-tickets'], ['post', 'season-tickets'], ['patch', 'season-tickets/id']] as const) {
       await request(app.getHttpServer())[method](`/admin/shop/${path}`).expect(401);
       await request(app.getHttpServer())[method](`/admin/shop/${path}`).auth(token, { type: 'bearer' }).expect(403);
+    }
+  });
+  it('validates DELETE IDs, returns 404 for missing rows and exposes no public DELETE', async () => {
+    const token = jwt.sign({ sub: 'ADMIN', type: 'access' });
+    for (const [kind, service] of [['orders', orders], ['season-tickets', tickets]] as const) {
+      for (const id of ['bad', 'x'.repeat(200), 'invalid%20id']) await request(app.getHttpServer()).delete(`/admin/shop/${kind}/${id}`).auth(token, { type: 'bearer' }).expect(400);
+      service.remove.mockImplementationOnce(() => { shopError('INVALID_INPUT', 404); });
+      await request(app.getHttpServer()).delete(`/admin/shop/${kind}/c${'b'.repeat(24)}`).auth(token, { type: 'bearer' }).expect(404);
+      await request(app.getHttpServer()).delete(`/shop/${kind}/c${'b'.repeat(24)}`).expect(404);
     }
   });
   it('requires customer email, valid phone/postal code and rejects client prices/source', async () => {

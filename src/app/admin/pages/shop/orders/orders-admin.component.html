@@ -1,10 +1,11 @@
 <section class="operations" lang="sr-Cyrl"><header><h1>Поруџбине</h1><a class="button" routerLink="/admin/shop/orders/new">РУЧНИ УНОС ПОРУЏБИНЕ</a></header>
   <form class="filters" (ngSubmit)="load()"><label>Претрага<input name="search" [(ngModel)]="search" maxlength="120" placeholder="Број, име, телефон или имејл" /></label><label>Статус<select name="status" [(ngModel)]="status"><option value="">Сви статуси</option>@for (status of statuses; track status) { <option [value]="status">{{ labels[status] }}</option> }</select></label><button [disabled]="busy()">ПРИКАЖИ</button></form>
   @if (error()) { <p role="alert" class="error">{{ error() }}</p> }
+  @if (notice()) { <p role="status">{{ notice() }}</p> }
   @if (busy()) { <p role="status">Учитавање…</p> }
   <p>Укупно поруџбина: {{ total() }}</p>
   <div class="table-scroll"><table><thead><tr><th>Број и датум</th><th>Купац</th><th>Износ производа</th><th>Попуст</th><th>Статус</th><th>Извор</th><th>Преглед</th></tr></thead><tbody>
-    @for (order of orders(); track order.id) { <tr><td>{{ order.orderNumber }}<small>{{ order.createdAt | date:'dd.MM.yyyy. HH:mm' }}</small></td><td>{{ order.firstName }} {{ order.lastName }}</td><td>{{ money(order.totalMinor) }}</td><td>{{ order.discountPercent }}% · {{ money(order.discountMinor) }}</td><td>{{ labels[order.status] }}</td><td>{{ sources[order.source] }}</td><td><button [disabled]="busy()" (click)="open(order.id)">ДЕТАЉИ</button></td></tr> }
+    @for (order of orders(); track order.id) { <tr><td>{{ order.orderNumber }}<small>{{ order.createdAt | date:'dd.MM.yyyy. HH:mm' }}</small></td><td>{{ order.firstName }} {{ order.lastName }}</td><td>{{ money(order.totalMinor) }}</td><td>{{ order.discountPercent }}% · {{ money(order.discountMinor) }}</td><td>{{ labels[order.status] }}</td><td>{{ sources[order.source] }}</td><td><button [disabled]="busy()" (click)="open(order.id)">ДЕТАЉИ</button> <button type="button" class="danger" [disabled]="busy()" (click)="remove(order)">ОБРИШИ</button></td></tr> }
   </tbody></table></div>
   @if (!busy() && !orders().length) { <p>Нема поруџбина за изабране услове.</p> }
   <nav class="actions" aria-label="Странице поруџбина"><button [disabled]="busy() || page() <= 1" (click)="load(page() - 1)">ПРЕТХОДНА</button><span>{{ page() }} / {{ pages() || 1 }}</span><button [disabled]="busy() || page() >= pages()" (click)="load(page() + 1)">СЛЕДЕЋА</button></nav>

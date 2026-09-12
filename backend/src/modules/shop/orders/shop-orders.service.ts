@@ -93,4 +93,14 @@ export class ShopOrdersService {
     if (!result.count) shopError('INVALID_INPUT');
     return { success: true };
   }
+  async remove(id: string) {
+    return this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`;
+      if (!await tx.order.findUnique({ where: { id }, select: { id: true } })) shopError('INVALID_INPUT', 404);
+      // Schema cascades only OrderItem, OrderStatusHistory and OrderEmail.
+      // The worker tolerates missing leases and completes with guarded updateMany.
+      await tx.order.delete({ where: { id } });
+      return { success: true };
+    }, { timeout: 15000 });
+  }
 }

@@ -59,6 +59,17 @@ export class SeasonTicketsService {
     const [data, count] = await this.db.$transaction([this.db.seasonTicket.findMany({ where, select: safeSelect, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (query.page - 1) * query.limit, take: query.limit }), this.db.seasonTicket.count({ where })]);
     return buildPaginatedResponse(data, count, query.page, query.limit);
   }
+  async remove(id: string) {
+    return this.db.$transaction(async tx => {
+      // Serializes with ticket edits and quote/order eligibility checks.
+      await tx.$queryRaw`SELECT "id" FROM "SeasonTicket" WHERE "id" = ${id} FOR UPDATE`;
+      if (!await tx.seasonTicket.findUnique({ where: { id }, select: { id: true } })) shopError('INVALID_INPUT', 404);
+      // Nullable Restrict FK: detach only the reference, retaining all money snapshots.
+      await tx.order.updateMany({ where: { seasonTicketId: id }, data: { seasonTicketId: null } });
+      await tx.seasonTicket.delete({ where: { id } });
+      return { success: true };
+    }, { timeout: 15000 });
+  }
   async write(dto: TicketWriteDto, id?: string) {
     const clean = (value: string) => sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} }).trim();
     if (typeof dto.cardNumber !== 'string' || !/^[0-9]{1,100}(?![\s\S])/.test(dto.cardNumber)

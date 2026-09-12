@@ -68,3 +68,12 @@ test('stable checkout errors are Cyrillic and raw server messages never reach th
   assert.match(checkoutError({ error: { code: 'VARIANT_UNAVAILABLE' } }), /величини/);
   assert.doesNotMatch(checkoutError({ error: { message: 'SQL private-address stack' } }), /SQL|private|stack/);
 });
+test('admin delete API uses only the scoped order and ticket endpoints', async () => {
+  const calls = [];
+  const injector = createEnvironmentInjector([CheckoutApiService, { provide: HttpClient, useValue: { delete: url => { calls.push(url); return of({ success: true }); } } }]);
+  const api = injector.get(CheckoutApiService);
+  await firstValueFrom(api.removeOrder('c' + 'a'.repeat(24)));
+  await firstValueFrom(api.removeTicket('c' + 'b'.repeat(24)));
+  assert.deepEqual(calls.map(url => new URL(url).pathname), ['/admin/shop/orders/c' + 'a'.repeat(24), '/admin/shop/season-tickets/c' + 'b'.repeat(24)]);
+  injector.destroy();
+});

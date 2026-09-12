@@ -105,6 +105,74 @@ suite('Checkout transactions against isolated PostgreSQL', () => {
     await expect(pricing.quote({ items: items(), seasonTicketToken: 'forged' })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
     await expect(orders.create({ ...dto, seasonTicketToken: 'forged' })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
   });
+  it('deletes only order children, keeps numbering and preserves products, variants, media and ticket', async () => {
+    const input = ticketInput(), ticket = await tickets.write(input);
+    const token = (await tickets.validate(input)).seasonTicketToken;
+    const media = await db.mediaFile.create({ data: { bucket: 'test', storagePath: randomUUID(), url: 'https://example.invalid/test.png', originalName: 'test.png', fileName: 'test.png', mimeType: 'image/png', size: 100 } });
+    await db.product.update({ where: { id: product.id }, data: { coverImageId: media.id, gallery: { create: { mediaFileId: media.id } } } });
+    const beforeProduct = await db.product.findUnique({ where: { id: product.id }, include: { variants: true, gallery: true } });
+    const beforeTicket = await db.seasonTicket.findUnique({ where: { id: ticket.id } });
+    const receipt = await orders.create(await request(token));
+    const order = await db.order.findUniqueOrThrow({ where: { orderNumber: receipt.orderNumber } });
+    const counters = await db.orderNumberCounter.findMany();
+    await orders.remove(order.id);
+    expect(await db.order.findUnique({ where: { id: order.id } })).toBeNull();
+    expect(await db.orderItem.count({ where: { orderId: order.id } })).toBe(0);
+    expect(await db.orderStatusHistory.count({ where: { orderId: order.id } })).toBe(0);
+    expect(await db.orderEmail.count({ where: { orderId: order.id } })).toBe(0);
+    expect(await db.product.findUnique({ where: { id: product.id }, include: { variants: true, gallery: true } })).toEqual(beforeProduct);
+    expect(await db.mediaFile.findUnique({ where: { id: media.id } })).toEqual(media);
+    expect(await db.seasonTicket.findUnique({ where: { id: ticket.id } })).toEqual(beforeTicket);
+    expect(await db.orderNumberCounter.findMany()).toEqual(counters);
+    const next = await orders.create(await request());
+    expect(Number(next.orderNumber.split('-').at(-1))).toBe(Number(receipt.orderNumber.split('-').at(-1)) + 1);
+    await expect(orders.remove(order.id)).rejects.toMatchObject({ status: 404 });
+  });
+  it('detaches a deleted ticket without changing historical discounts or other records', async () => {
+    const input = ticketInput(), ticket = await tickets.write(input), other = await tickets.write(ticketInput());
+    const token = (await tickets.validate(input)).seasonTicketToken;
+    const dto = await request(token), receipt = await orders.create(dto);
+    const order = await db.order.findUniqueOrThrow({ where: { orderNumber: receipt.orderNumber }, include: { items: true, emails: true, statusHistory: true } });
+    const counters = await db.orderNumberCounter.findMany();
+    await tickets.remove(ticket.id);
+    const after = await db.order.findUniqueOrThrow({ where: { id: order.id }, include: { items: true, emails: true, statusHistory: true } });
+    expect(after).toEqual({ ...order, seasonTicketId: null, updatedAt: expect.any(Date) });
+    expect(after.discountPercent).toBe(20); expect(after.discountMinor).toBe(order.discountMinor);
+    expect(await db.seasonTicket.findUnique({ where: { id: other.id }, select: { fullName: true } })).toEqual({ fullName: other.fullName });
+    expect(await db.orderNumberCounter.findMany()).toEqual(counters);
+    await expect(pricing.quote({ items: items(), seasonTicketToken: token })).rejects.toMatchObject({ response: { code: 'SEASON_TICKET_INVALID' } });
+    await expect(tickets.remove(ticket.id)).rejects.toMatchObject({ status: 404 });
+  });
+  it('continues at 0008 after deleting all seven orders of an isolated numbering year', async () => {
+    let year = 4100;
+    while (await db.orderNumberCounter.findUnique({ where: { year } })) year++;
+    const annualNumbers = { next: (tx: Parameters<OrderNumberService['next']>[0]) => numbers.next(tx, new Date(`${year}-06-01T12:00:00Z`)) };
+    const isolatedOrders = new ShopOrdersService(db as PrismaService, pricing, tokens, annualNumbers as OrderNumberService, outbox);
+    for (let index = 1; index <= 7; index++) {
+      const receipt = await isolatedOrders.create(await request());
+      expect(receipt.orderNumber).toBe(`CZ-${year}-${String(index).padStart(4, '0')}`);
+      const row = await db.order.findUniqueOrThrow({ where: { orderNumber: receipt.orderNumber } });
+      await isolatedOrders.remove(row.id);
+    }
+    expect(await db.order.count({ where: { orderNumber: { startsWith: `CZ-${year}-` } } })).toBe(0);
+    expect(await db.orderNumberCounter.findUnique({ where: { year } })).toEqual({ year, lastValue: 7 });
+    expect((await isolatedOrders.create(await request())).orderNumber).toBe(`CZ-${year}-0008`);
+  });
+  it('handles deletion while an email is in flight without orphan rows or worker errors', async () => {
+    await db.orderEmail.updateMany({ data: { status: 'SENT', lockedAt: null, lockToken: null } });
+    const receipt = await orders.create(await request());
+    const order = await db.order.findUniqueOrThrow({ where: { orderNumber: receipt.orderNumber } });
+    let finish!: () => void, started!: () => void;
+    const sending = new Promise<void>(resolve => { started = resolve; });
+    const send = jest.fn(() => { started(); return new Promise<void>(resolve => { finish = resolve; }); });
+    const worker = new OrderEmailWorkerService(db as PrismaService, config, { send } as unknown as MailService);
+    const processing = worker.tick(); await sending;
+    try { await orders.remove(order.id); } finally { finish(); }
+    await processing; await worker.tick();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await db.orderEmail.count({ where: { orderId: order.id } })).toBe(0);
+    expect(await db.order.findUnique({ where: { id: order.id } })).toBeNull();
+  });
   it('rejects price changes with a new quote and keeps the same attempt retryable', async () => {
     const dto = await request();
     await db.product.update({ where: { id: product.id }, data: { priceMinor: 120000 } });

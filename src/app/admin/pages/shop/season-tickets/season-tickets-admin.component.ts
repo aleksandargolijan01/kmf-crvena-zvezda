@@ -22,6 +22,7 @@ export class SeasonTicketsAdminComponent {
   needsUpdate(ticket: SeasonTicket) { return !ticket.fullName?.trim() || !/^[0-9]+(?![\s\S])/.test(ticket.cardNumber) || ticket.verificationMethod !== 'FULL_NAME'; }
   constructor() { const changes = inject(ChangeDetectorRef); this.form.events.pipe(takeUntilDestroyed()).subscribe(() => changes.markForCheck()); afterNextRender(() => { void this.load(); }); }
   async load(page = 1) {
+    if (this.busy()) return;
     this.busy.set(true); this.error.set('');
     try { const result = await firstValueFrom(this.api.tickets(page, this.search.trim())); this.tickets.set(result.data); this.page.set(page); this.pages.set(result.meta?.totalPages ?? 1); }
     catch (error) { this.error.set(checkoutError(error)); }
@@ -40,8 +41,22 @@ export class SeasonTicketsAdminComponent {
     this.busy.set(true); this.error.set('');
     try {
       await firstValueFrom(this.api.saveTicket({ ...data, fullName: data.fullName.trim(), validFrom: data.validFrom ? new Date(data.validFrom).toISOString() : null, validUntil: data.validUntil ? new Date(data.validUntil).toISOString() : null }, previous?.id));
-      this.close(); this.notice.set('Сезонска карта је сачувана.'); await this.load(this.page());
+      this.close(); this.notice.set('Сезонска карта је сачувана.'); this.busy.set(false); await this.load(this.page());
     } catch (error) { this.error.set(checkoutError(error)); }
     finally { this.busy.set(false); }
+  }
+  async remove(ticket: SeasonTicket) {
+    if (this.busy() || !confirm('Да ли сте сигурни да желите трајно да обришете ову сезонску карту? Ова радња се не може поништити.')) return;
+    this.busy.set(true); this.error.set(''); this.notice.set('');
+    try {
+      await firstValueFrom(this.api.removeTicket(ticket.id));
+      this.tickets.update(rows => rows.filter(row => row.id !== ticket.id));
+      if (this.selected()?.id === ticket.id) this.close();
+      this.notice.set('Сезонска карта је обрисана.');
+      const page = this.tickets().length ? this.page() : Math.max(1, this.page() - 1);
+      this.busy.set(false); await this.load(page);
+    } catch (error) {
+      this.error.set((error as { status?: number }).status === 404 ? 'Сезонска карта не постоји. Освежите листу.' : 'Брисање сезонске карте није успело. Покушајте поново.');
+    } finally { this.busy.set(false); }
   }
 }

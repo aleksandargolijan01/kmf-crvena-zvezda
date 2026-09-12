@@ -16,6 +16,8 @@ export class CheckoutApiService {
   receipt(receiptToken: string) { return this.http.post<Receipt>(`${this.base}/shop/orders/receipt`, { receiptToken }).pipe(timeout(20000)); }
   orders(page: number, search: string, status: string) { return this.http.get<PageResponse<OrderSummary>>(`${this.base}/admin/shop/orders`, { params: { page, limit: 20, ...(search ? { search } : {}), ...(status ? { status } : {}) }, transferCache: false }); }
   order(id: string) { return this.http.get<OrderDetail>(`${this.base}/admin/shop/orders/${id}`, { transferCache: false }); }
+  removeOrder(id: string) { return this.http.delete<{ success: boolean }>(`${this.base}/admin/shop/orders/${encodeURIComponent(id)}`).pipe(timeout(20000)); }
+  removeTicket(id: string) { return this.http.delete<{ success: boolean }>(`${this.base}/admin/shop/season-tickets/${encodeURIComponent(id)}`).pipe(timeout(20000)); }
   status(id: string, status: OrderStatus) { return this.http.patch<OrderDetail>(`${this.base}/admin/shop/orders/${id}/status`, { status }); }
   retryEmail(id: string, emailId: string) { return this.http.post(`${this.base}/admin/shop/orders/${id}/emails/${emailId}/retry`, {}); }
   tickets(page: number, search: string) { return this.http.get<PageResponse<SeasonTicket>>(`${this.base}/admin/shop/season-tickets`, { params: { page, limit: 20, search }, transferCache: false }); }

@@ -33,7 +33,7 @@ const quote = (request, price = 300000) => {
 };
 async function fixture(width, admin = false) {
   const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' }); context.setDefaultTimeout(15000);
-  const state = { creates: [], quoteCalls: 0, price: 300000, quoteDelay: 0, quoteStatus: 201, nextError: null, ticketValid: false, receipt: null, delayCreate: 0, recoverCalls: 0, statusCalls: [], savedTickets: [], retryCalls: 0, dropResponse: false };
+  const state = { creates: [], quoteCalls: 0, price: 300000, quoteDelay: 0, quoteStatus: 201, nextError: null, ticketValid: false, receipt: null, delayCreate: 0, recoverCalls: 0, statusCalls: [], savedTickets: [], retryCalls: 0, dropResponse: false, deleteCalls: [], deleted: {}, deleteStatus: 200 };
   const detail = { ...customer, id: 'order1', orderNumber: 'CZ-2026-TEST', status: 'NEW', source: 'PHONE', createdAt: new Date().toISOString(), ...quote({ items: [{ variantId: 'v1', quantity: 1 }] }), statusHistory: [{ id: 'h1', status: 'NEW', createdAt: new Date().toISOString(), changedBy: { firstName: 'Тест', lastName: 'Администратор' } }], allowedStatuses: ['CONFIRMED', 'CANCELLED'], emails: [{ id: 'email1', kind: 'CLUB', status: 'FAILED', attempts: 5, lastError: 'Слање није успело.', nextAttemptAt: null, sentAt: null }] };
   const ticket = { id: 't1', seasonKey: 'ТЕСТ', cardNumber: 'TEST-001', fullName: null, active: true, verificationMethod: 'PIN', validFrom: null, validUntil: null };
   await context.route('**/*', async route => {
@@ -59,12 +59,18 @@ async function fixture(width, admin = false) {
       if (state.dropResponse) return route.abort('failed');
       return route.fulfill({ status: 201, json: state.receipt });
     }
-    if (p === '/admin/shop/orders') return route.fulfill({ json: pageResponse([detail]) });
+    if (route.request().method() === 'DELETE' && /^\/admin\/shop\/(orders|season-tickets)\//.test(p)) {
+      state.deleteCalls.push(p); await new Promise(resolve => setTimeout(resolve, 350));
+      if (state.deleteStatus !== 200) return route.fulfill({ status: state.deleteStatus, json: { code: 'INVALID_INPUT' } });
+      state.deleted[p.includes('/season-tickets/') ? 'season-tickets' : 'orders'] = true;
+      return route.fulfill({ json: { success: true } });
+    }
+    if (p === '/admin/shop/orders') return route.fulfill({ json: pageResponse(state.deleted.orders ? [] : [detail]) });
     if (p === '/admin/shop/orders/order1') return route.fulfill({ json: detail });
     if (p.endsWith('/order1/status')) { const { status } = route.request().postDataJSON(); state.statusCalls.push(status); detail.status = status; detail.allowedStatuses = status === 'CONFIRMED' ? ['SHIPPED', 'CANCELLED'] : status === 'SHIPPED' ? ['COMPLETED'] : []; detail.statusHistory.push({ id: 'h' + detail.statusHistory.length, status, createdAt: new Date().toISOString(), changedBy: { firstName: 'Тест', lastName: 'Администратор' } }); return route.fulfill({ json: detail }); }
     if (p.endsWith('/emails/email1/retry')) { state.retryCalls++; detail.emails[0].status = 'PENDING'; return route.fulfill({ json: { success: true } }); }
     if (p.startsWith('/admin/shop/season-tickets')) {
-      if (route.request().method() === 'GET') return route.fulfill({ json: pageResponse([ticket]) });
+      if (route.request().method() === 'GET') return route.fulfill({ json: pageResponse(state.deleted['season-tickets'] ? [] : [ticket]) });
       const body = route.request().postDataJSON(); state.savedTickets.push(body); Object.assign(ticket, body, { verificationMethod: 'FULL_NAME' }); return route.fulfill({ json: ticket });
     }
     if (url.origin === base) return route.continue();
@@ -199,6 +205,28 @@ try {
     assert.equal(await page.locator('.operations h1').evaluate(el => getComputedStyle(el).color), 'rgb(36, 36, 36)');
     assert.equal(await page.locator('.operations').evaluate(el => el.getBoundingClientRect().right <= innerWidth), true);
     assert.deepEqual(errors, []); await context.close(); console.log(`PASS CMS ${width}px: order status/history/terminal, FAILED retry, manual authoritative order/source, legacy ticket completion, full name/create/edit/leading zeros.`);
+  }
+  for (const kind of ['orders', 'season-tickets']) {
+    const { page, context, state } = await fixture(390, true);
+    await page.goto(base + '/admin/shop/' + kind);
+    const button = page.getByRole('button', { name: 'ОБРИШИ', exact: true }); await button.waitFor();
+    assert.equal(await button.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(180, 0, 22)');
+    const confirmation = kind === 'orders'
+      ? 'Да ли сте сигурни да желите трајно да обришете ову поруџбину? Ова радња се не може поништити.'
+      : 'Да ли сте сигурни да желите трајно да обришете ову сезонску карту? Ова радња се не може поништити.';
+    page.once('dialog', dialog => { assert.equal(dialog.message(), confirmation); return dialog.dismiss(); });
+    await button.click(); assert.equal(state.deleteCalls.length, 0);
+    state.deleteStatus = 500; page.once('dialog', dialog => dialog.accept());
+    await button.click(); await page.getByRole('alert').filter({ hasText: 'Брисање' }).waitFor(); assert.equal(state.deleteCalls.length, 1);
+    assert.equal(await button.isVisible(), true);
+    state.deleteStatus = 404; page.once('dialog', dialog => dialog.accept());
+    await button.click(); await page.getByRole('alert').filter({ hasText: 'не постоји' }).waitFor();
+    state.deleteStatus = 200; page.once('dialog', dialog => dialog.accept());
+    await button.evaluate(element => { element.click(); element.click(); });
+    await page.getByText(kind === 'orders' ? 'Поруџбина је обрисана.' : 'Сезонска карта је обрисана.', { exact: true }).waitFor();
+    assert.equal(state.deleteCalls.length, 3); assert.equal(await button.count(), 0);
+    assert.ok(page.url().endsWith('/admin/shop/' + kind));
+    await context.close(); console.log(`PASS ${kind} DELETE: confirmation/cancel/500/404/success/list/double-click at 390px.`);
   }
 } catch (error) {
   if (currentPage && !currentPage.isClosed()) { console.error('Failure URL:', currentPage.url()); console.error((await currentPage.locator('body').innerText()).slice(-5500)); await screenshot(currentPage, 'checkout-failure'); }

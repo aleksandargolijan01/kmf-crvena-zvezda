@@ -12,6 +12,7 @@ export class OrdersAdminComponent {
   readonly orders = signal<OrderSummary[]>([]);
   readonly detail = signal<OrderDetail | null>(null);
   readonly error = signal('');
+  readonly notice = signal('');
   readonly busy = signal(false);
   readonly page = signal(1);
   readonly pages = signal(1);
@@ -51,5 +52,20 @@ export class OrdersAdminComponent {
     try { await firstValueFrom(this.api.retryEmail(order.id, id)); this.detail.set(await firstValueFrom(this.api.order(order.id))); }
     catch (error) { this.error.set(checkoutError(error)); }
     finally { this.busy.set(false); }
+  }
+  async remove(order: OrderSummary) {
+    if (this.busy() || !confirm('Да ли сте сигурни да желите трајно да обришете ову поруџбину? Ова радња се не може поништити.')) return;
+    this.busy.set(true); this.error.set(''); this.notice.set('');
+    try {
+      await firstValueFrom(this.api.removeOrder(order.id));
+      this.orders.update(rows => rows.filter(row => row.id !== order.id));
+      this.total.update(total => Math.max(0, total - 1));
+      if (this.detail()?.id === order.id) this.detail.set(null);
+      this.notice.set('Поруџбина је обрисана.');
+      const page = this.orders().length ? this.page() : Math.max(1, this.page() - 1);
+      this.busy.set(false); await this.load(page);
+    } catch (error) {
+      this.error.set((error as { status?: number }).status === 404 ? 'Поруџбина не постоји. Освежите листу.' : 'Брисање поруџбине није успело. Покушајте поново.');
+    } finally { this.busy.set(false); }
   }
 }

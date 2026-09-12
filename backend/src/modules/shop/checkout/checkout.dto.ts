@@ -34,6 +34,9 @@ export class TicketValidationDto {
   @IsString() @Matches(/^[0-9]+(?![\s\S])/) @MaxLength(100) cardNumber!: string;
   @Transform(trim) @IsString() @MinLength(1) @MaxLength(200) fullName!: string;
 }
+export class ShopDeleteParamsDto {
+  @IsString() @Matches(/^c[a-z0-9]{24}(?![\s\S])/) id!: string;
+}
 export class ReceiptDto { @IsString() @MinLength(1) @MaxLength(3000) receiptToken!: string; }
 export class RecoverOrderDto { @IsString() @Matches(/^[a-zA-Z0-9_-]{32,128}$/) idempotencyKey!: string; }
 export class OrderStatusDto { @IsEnum(OrderStatus) status!: OrderStatus; }
