@@ -216,7 +216,7 @@ export class MediaAdminComponent implements OnInit {
 
   private deleteErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 409) {
-      return 'Slika se koristi na sajtu. Prvo je ukloni iz vesti, igraca, uprave ili sponzora, pa je onda obrisi.';
+      return 'Slika se koristi na sajtu. Prvo je ukloni iz vesti, igraca, uprave ili partnera, pa je onda obrisi.';
     }
 
     const message = typeof error.error?.message === 'string' ? error.error.message : '';

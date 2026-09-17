@@ -61,16 +61,24 @@ import { SocialLinksComponent } from '../../shared/social-links/social-links.com
           class="footer-friends-cta"
           routerLink="/prijatelji-kluba"
           fragment="sponsor-form"
-          aria-label="Постаните пријатељ клуба - отворите форму на страници Пријатељи клуба"
+          [attr.aria-label]="i18n.t('footer.partnerAria')"
         >
-          ПОСТАНИТЕ ПРИЈАТЕЉ КЛУБА
+          {{ i18n.t('friends.hero.cta') }}
         </a>
       </div>
 
       <app-newsletter-form class="footer-newsletter" source="footer" variant="compact" />
 
-      <p class="copyright">{{ i18n.t('footer.copyright') }}</p>
+      <p class="copyright">{{ i18n.t('footer.copyright') }}
+        <span class="developer-credit">{{ i18n.t('footer.developerCredit') }} – <a href="https://www.linkedin.com/in/aleksandar-golijan-551913305/" target="_blank" rel="noopener noreferrer">{{ i18n.t('footer.developerName') }}</a></span>
+      </p>
     </footer>
+  `,
+  styles: `
+    .copyright .developer-credit { display: block; margin-top: 6px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .copyright .developer-credit a { display: inline; margin: 0; font-size: inherit; color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    .copyright .developer-credit a:hover { color: var(--white); transform: none; }
+    .copyright .developer-credit a:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
   `
 })
 export class FooterComponent {

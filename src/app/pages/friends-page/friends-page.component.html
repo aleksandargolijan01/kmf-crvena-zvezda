@@ -22,11 +22,11 @@
 
   <section class="section sponsor-packages">
     @if (sponsorsState().loading) {
-      <div class="public-state">Учитавање спонзора...</div>
+      <div class="public-state">{{ i18n.t('partners.loading') }}</div>
     } @else if (sponsorsState().error) {
-      <div class="public-state public-state-error">Спонзори тренутно нису доступни.</div>
+      <div class="public-state public-state-error">{{ i18n.t('partners.error') }}</div>
     } @else if (!sponsorsState().categories.length) {
-      <div class="public-state">Тренутно нема активних спонзора за приказ.</div>
+      <div class="public-state">{{ i18n.t('partners.empty') }}</div>
     } @else {
     @for (category of sponsorsState().categories; track category.id) {
       <article class="package-block glow-card">

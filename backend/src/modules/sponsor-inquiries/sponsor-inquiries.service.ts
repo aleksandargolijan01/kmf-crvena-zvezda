@@ -47,7 +47,7 @@ export class SponsorInquiriesService {
       await this.mail.send({
         to,
         from,
-        subject: this.safeHeaderText(`Нови упит за спонзорство — ${inquiry.companyName}`),
+        subject: this.safeHeaderText(`Нови упит за партнерство — ${inquiry.companyName}`),
         html,
         text: this.buildTextFallback(inquiry, submittedAt),
         replyTo: replyToEnabled ? this.safeUserHeaderValue(inquiry.email) : undefined,
@@ -141,7 +141,7 @@ export class SponsorInquiriesService {
 
   private buildTextFallback(inquiry: ReturnType<typeof sanitizeSponsorInquiryInput>, submittedAt: Date) {
     return [
-      'Нови упит за спонзорство',
+      'Нови упит за партнерство',
       '',
       `Име и презиме: ${inquiry.fullName}`,
       `Компанија: ${inquiry.companyName}`,

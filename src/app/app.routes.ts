@@ -26,7 +26,7 @@ export const routes: Routes = [
   { path: 'vesti/:slug', component: NewsArticlePageComponent, title: 'Vest | KMF Crvena Zvezda' },
   { path: 'uprava', component: LeadershipPageComponent, title: 'Uprava kluba | KMF Crvena Zvezda' },
   { path: 'upravni-odbor', component: BoardPageComponent, title: 'Upravni odbor | KMF Crvena Zvezda' },
-  { path: 'prijatelji-kluba', component: FriendsPageComponent, title: 'Prijatelji kluba | KMF Crvena Zvezda' },
+  { path: 'prijatelji-kluba', component: FriendsPageComponent, title: 'Партнери клуба | КМФ Црвена звезда' },
   { path: 'kontakt', component: HomeComponent, title: 'Kontakt | KMF Crvena Zvezda' },
   { path: '404', component: NotFoundPageComponent, title: '404 | KMF Crvena Zvezda' },
   { path: '**', component: NotFoundPageComponent, title: '404 | KMF Crvena Zvezda' }

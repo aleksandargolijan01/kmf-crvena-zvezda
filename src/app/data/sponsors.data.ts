@@ -20,7 +20,7 @@ export const sponsors: Sponsor[] = [
 export const sponsorPackages: SponsorPackage[] = [
   {
     title: 'Насловни спонзор',
-    titleLabel: lt('Насловни спонзор', 'Title sponsor', 'Титульный спонсор'),
+    titleLabel: lt('Архивска категорија', 'Legacy category', 'Архивная категория'),
     description: lt(
       'Највиши ниво партнерства са доминантном видљивошћу кроз све клупске канале.',
       'The highest partnership level with dominant visibility across all club channels.',
@@ -29,7 +29,7 @@ export const sponsorPackages: SponsorPackage[] = [
   },
   {
     title: 'Златни спонзори',
-    titleLabel: lt('Златни спонзори', 'Gold sponsors', 'Золотые спонсоры'),
+    titleLabel: lt('Главни партнер', 'Main partner', 'Главный партнёр'),
     description: lt(
       'Премијум пакет за компаније које желе снажно присуство уз први тим и догађаје.',
       'A premium package for companies seeking strong visibility around the first team and events.',
@@ -38,7 +38,7 @@ export const sponsorPackages: SponsorPackage[] = [
   },
   {
     title: 'Сребрни спонзори',
-    titleLabel: lt('Сребрни спонзори', 'Silver sponsors', 'Серебряные спонсоры'),
+    titleLabel: lt('Премијум партнер', 'Premium partner', 'Премиум-партнёр'),
     description: lt(
       'Стабилна сезонска подршка са јасном видљивошћу на дигиталним и клупским материјалима.',
       'Stable season-long support with clear visibility in digital and club materials.',
@@ -47,7 +47,7 @@ export const sponsorPackages: SponsorPackage[] = [
   },
   {
     title: 'Бронзани спонзори',
-    titleLabel: lt('Бронзани спонзори', 'Bronze sponsors', 'Бронзовые спонсоры'),
+    titleLabel: lt('Званични партнер', 'Official partner', 'Официальный партнёр'),
     description: lt(
       'Приступачан пакет за локалне бизнисе и компаније које желе да буду уз клуб.',
       'An accessible package for local businesses and companies that want to support the club.',
@@ -56,7 +56,7 @@ export const sponsorPackages: SponsorPackage[] = [
   },
   {
     title: 'Пријатељи клуба',
-    titleLabel: lt('Пријатељи клуба', 'Club friends', 'Друзья клуба'),
+    titleLabel: lt('Клупски партнери', 'Club partners', 'Клубные партнёры'),
     description: lt(
       'Мрежа људи и брендова који помажу развој заједнице и свакодневни рад клуба.',
       'A network of people and brands supporting community growth and the club’s everyday work.',

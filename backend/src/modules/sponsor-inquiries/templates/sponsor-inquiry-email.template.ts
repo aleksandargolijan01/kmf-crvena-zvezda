@@ -13,7 +13,7 @@ export function buildSponsorInquiryEmail(data: SponsorInquiryEmailTemplateData) 
     timeStyle: 'short',
     timeZone: 'Europe/Belgrade',
   }).format(data.submittedAt);
-  const replyHref = `mailto:${encodeURIComponent(inquiry.email)}?subject=${encodeURIComponent(`Re: Нови упит за спонзорство — ${inquiry.companyName}`)}`;
+  const replyHref = `mailto:${encodeURIComponent(inquiry.email)}?subject=${encodeURIComponent(`Re: Нови упит за партнерство — ${inquiry.companyName}`)}`;
   const rows = [
     ['Име и презиме', inquiry.fullName],
     ['Компанија', inquiry.companyName],
@@ -29,7 +29,7 @@ export function buildSponsorInquiryEmail(data: SponsorInquiryEmailTemplateData) 
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Нови упит за спонзорство</title>
+    <title>Нови упит за партнерство</title>
   </head>
   <body style="margin:0;padding:0;background-color:#f4f4f6;font-family:Arial,Helvetica,sans-serif;color:#202024;">
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;background-color:#f4f4f6;margin:0;padding:0;">
@@ -40,13 +40,13 @@ export function buildSponsorInquiryEmail(data: SponsorInquiryEmailTemplateData) 
               <td style="background-color:#8a000b;background-image:linear-gradient(135deg,#d50012,#700007 58%,#220003);padding:28px 26px;text-align:center;">
                 <img src="cid:club-logo" width="86" alt="КМФ Црвена звезда" style="display:block;margin:0 auto 16px auto;width:86px;height:auto;border:0;outline:none;text-decoration:none;" />
                 <div style="font-size:12px;line-height:18px;color:#ffffff;text-transform:uppercase;font-weight:700;">КМФ Црвена звезда</div>
-                <h1 style="margin:8px 0 0 0;color:#ffffff;font-size:28px;line-height:34px;font-weight:900;">Нови упит за спонзорство</h1>
+                <h1 style="margin:8px 0 0 0;color:#ffffff;font-size:28px;line-height:34px;font-weight:900;">Нови упит за партнерство</h1>
               </td>
             </tr>
             <tr>
               <td style="padding:28px 26px 12px 26px;">
                 <p style="margin:0;color:#3b3b42;font-size:16px;line-height:24px;">
-                  Преко јавног сајта стигао је нови упит за спонзорство или статус пријатеља клуба. Подаци су приказани у наставку.
+                  Преко јавног сајта стигао је нови упит за партнерство са клубом. Подаци су приказани у наставку.
                 </p>
               </td>
             </tr>

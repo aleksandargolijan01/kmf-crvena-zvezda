@@ -94,7 +94,7 @@ export class AdminLayoutComponent {
     { label: 'Uprava', route: '/admin/management', icon: 'U' },
     { label: 'Upravni odbor', route: '/admin/board-members', icon: 'O' },
     { label: 'Стручни штаб', route: '/admin/staff', icon: 'SŠ' },
-    { label: 'Sponzori', route: '/admin/sponsors', icon: 'S' },
+    { label: 'Партнери', route: '/admin/sponsors', icon: 'S' },
     { label: 'Newsletter', route: '/admin/newsletter', icon: '@' }
   ];
 

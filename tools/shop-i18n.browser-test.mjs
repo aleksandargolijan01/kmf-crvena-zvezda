@@ -1,7 +1,7 @@
 // Production Angular build, isolated API fixtures, no live CMS/orders/OpenAI writes.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { moduleUrl } from './typescript-test-loader.mjs';
@@ -31,7 +31,7 @@ const pageResponse = data => ({ data, meta: { page: 1, totalPages: data.length ?
 let browser;
 try {
   browser = await chromium.launch({ channel: 'msedge', headless: true });
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 768, 390]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
     context.setDefaultTimeout(12000);
     let apiCalls = 0, quotes = 0, orderWrites = 0;
@@ -76,7 +76,38 @@ try {
       assert.equal((await page.locator('.shop-home .product-card h3').textContent()).trim(), product.name[lang]);
       assert.equal(await page.locator('#shop-home-title').innerText(), dict['shop.zvezdaShop']);
       assert.equal(await page.locator('.product-badge').innerText(), dict['shop.new']);
+      const credit = page.locator('.copyright > .developer-credit'), link = credit.locator('a');
+      const expected = {
+        sr: ['Развој и реализација сајта', 'Александар Голијан'],
+        en: ['Website development and implementation', 'Aleksandar Golijan'],
+        ru: ['Разработка и реализация сайта', 'Александар Голијан'],
+      }[lang];
+      assert.equal((await credit.innerText()).trim(), expected.join(' – '));
+      assert.equal(await link.count(), 1); assert.equal(await link.innerText(), expected[1]);
+      assert.equal(await link.getAttribute('href'), 'https://www.linkedin.com/in/aleksandar-golijan-551913305/');
+      assert.equal(await link.getAttribute('target'), '_blank');
+      assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
+      assert.equal(await link.getAttribute('aria-label'), null);
+      assert.equal(await page.locator('.copyright').evaluate(el => el.firstChild.textContent.trim()), dict['footer.copyright']);
+      assert.equal(await link.evaluate(el => getComputedStyle(el).textDecorationLine), 'underline');
+      assert.equal(await credit.evaluate(el => getComputedStyle(el).color === getComputedStyle(el.parentElement).color && parseFloat(getComputedStyle(el).fontSize) < parseFloat(getComputedStyle(el.parentElement).fontSize)), true, 'Keep existing copyright contrast with a smaller font');
+      await link.focus(); await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');
+      assert.equal(await link.evaluate(el => el === document.activeElement && el.matches(':focus-visible') && getComputedStyle(el).outlineStyle === 'solid'), true);
+      for (const checkWidth of [width, 320]) {
+        await page.setViewportSize({ width: checkWidth, height: 1000 });
+        assert.equal(await credit.evaluate(el => {
+          const r = el.getBoundingClientRect(), parent = el.parentElement;
+          const range = document.createRange(); range.selectNode(parent.firstChild);
+          return r.left >= 0 && r.right <= innerWidth && r.top > range.getBoundingClientRect().bottom && parent.scrollWidth <= parent.clientWidth;
+        }), true, 'Credit must stay below copyright and wrap inside its existing block');
+      }
+      await page.setViewportSize({ width, height: 1000 });
+      if (process.env.FOOTER_TEST_ARTIFACT_DIR) {
+        await mkdir(process.env.FOOTER_TEST_ARTIFACT_DIR, { recursive: true });
+        await page.locator('.copyright').screenshot({ path: path.join(process.env.FOOTER_TEST_ARTIFACT_DIR, `footer-${lang}-${width}.png`) });
+      }
     });
+    console.log(`Footer SR/EN/RU, inline author link, keyboard focus, wrapping at ${width}/320px PASS`);
     await page.locator('.shop-home .product-card a').click();
     await page.locator('.shop-info h1').waitFor();
     await page.locator('.shop-buy').click(); // Keep validation visible while switching.

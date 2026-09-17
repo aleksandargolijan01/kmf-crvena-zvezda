@@ -1,6 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { isRetiredSponsorCategory, sponsorCategoryLabel } from '../../../data/sponsor-category-labels';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 import { AdminApiService } from '../../../core/api/admin-api.service';
 import { ListQuery, MediaFile, SponsorCategory, SponsorItem } from '../../../core/api/admin-api.models';
 import { adminLoadGuard, rowsOf, totalOf } from '../../shared/admin-ui';
@@ -15,13 +17,13 @@ import { ToastService } from '../../shared/toast.service';
       <div class="admin-page-head">
         <div>
           <span class="admin-kicker">Partners CMS</span>
-          <h1>Sponzori</h1>
+          <h1>Партнери</h1>
         </div>
-        <button class="admin-button primary" type="button" (click)="newSponsor()">Novi sponzor</button>
+        <button class="admin-button primary" type="button" (click)="newSponsor()">Нови партнер</button>
       </div>
 
       <div class="lang-tabs admin-section-tabs">
-        <button type="button" [class.is-active]="activePanel === 'sponsors'" (click)="activePanel = 'sponsors'">Sponzori</button>
+        <button type="button" [class.is-active]="activePanel === 'sponsors'" (click)="activePanel = 'sponsors'">Партнери</button>
         <button type="button" [class.is-active]="activePanel === 'categories'" (click)="activePanel = 'categories'">Kategorije</button>
       </div>
 
@@ -47,11 +49,11 @@ import { ToastService } from '../../shared/toast.service';
           <div class="category-list">
             @for (cat of categories; track cat.id) {
               <button type="button" (click)="editCategory(cat)" [class.is-selected]="cat.id === selectedCategory?.id">
-                <b>{{ cat.name_sr }}</b><small>order {{ cat.order }} · {{ cat.active ? 'active' : 'hidden' }}</small>
+                <b>{{ categoryLabel(cat) }}</b><small>order {{ cat.order }} · {{ cat.active ? 'active' : 'hidden' }}</small>
               </button>
             }
             @if (!categoriesLoading && !categories.length && !categoriesError) {
-              <div class="empty-state">Nema kategorija sponzora.</div>
+              <div class="empty-state">Нема категорија партнера.</div>
             }
           </div>
           @if (categoriesLoading) {
@@ -67,13 +69,13 @@ import { ToastService } from '../../shared/toast.service';
 
       } @else {
         <section class="admin-card">
-          <div class="card-head"><h2>Sponzori</h2><span>{{ total }} ukupno</span></div>
+          <div class="card-head"><h2>Партнери</h2><span>{{ total }} ukupno</span></div>
           <div class="toolbar compact">
             <input type="search" placeholder="Pretraga..." [(ngModel)]="query.search" (keyup.enter)="loadSponsors()" />
             <select [(ngModel)]="query.categoryId" (change)="loadSponsors()">
               <option value="">Sve kategorije</option>
               @for (cat of categories; track cat.id) {
-                <option [value]="cat.id">{{ cat.name_sr }}</option>
+                <option [value]="cat.id">{{ categoryLabel(cat) }}</option>
               }
             </select>
           </div>
@@ -85,13 +87,13 @@ import { ToastService } from '../../shared/toast.service';
               <button class="admin-button ghost" type="button" (click)="loadSponsors()">Покушај поново</button>
             </div>
           } @else if (!sponsors.length) {
-            <div class="empty-state">Nema sponzora za izabrane filtere.</div>
+            <div class="empty-state">Нема партнера за изабране услове.</div>
           }
           <div class="sponsor-list">
             @for (sponsor of sponsors; track sponsor.id) {
               <button type="button" (click)="editSponsor(sponsor)" [class.is-selected]="sponsor.id === selectedSponsor?.id">
                 <img [src]="sponsor.logoUrl || '/images/logo-kmf-crvena-zvezda.png'" [alt]="sponsor.name" />
-                <span><b>{{ sponsor.name }}</b><small>{{ sponsor.category?.name_sr || 'Bez kategorije' }} · order {{ sponsor.order }}</small></span>
+                <span><b>{{ sponsor.name }}</b><small>{{ sponsor.category ? categoryLabel(sponsor.category) : 'Без категорије' }} · order {{ sponsor.order }}</small></span>
                 <i [class.good]="sponsor.active" [class.warn]="!sponsor.active">{{ sponsor.featured ? 'Featured' : 'Standard' }}</i>
               </button>
             }
@@ -106,7 +108,7 @@ import { ToastService } from '../../shared/toast.service';
 
       <section class="admin-card editor-card wide">
         <div class="card-head">
-          <h2>{{ selectedSponsor?.id ? 'Izmena sponzora' : 'Novi sponzor' }}</h2>
+          <h2>{{ selectedSponsor?.id ? 'Измена партнера' : 'Нови партнер' }}</h2>
           <div class="row-actions compact">
             @if (selectedSponsor) {
               <button type="button" class="danger" (click)="removeSponsor()">Delete</button>
@@ -123,7 +125,7 @@ import { ToastService } from '../../shared/toast.service';
             <label>Kategorija
               <select formControlName="categoryId">
                 <option value="">Bez kategorije</option>
-                @for (cat of categories; track cat.id) { <option [value]="cat.id">{{ cat.name_sr }}</option> }
+                @for (cat of assignableCategories; track cat.id) { <option [value]="cat.id">{{ categoryLabel(cat) }}</option> }
               </select>
             </label>
             <label>Order <input type="number" min="0" formControlName="order" /></label>
@@ -149,7 +151,7 @@ import { ToastService } from '../../shared/toast.service';
             <span>Drag ordering arhitektura: svaki entitet vec cuva order, UI je spreman za reorder endpoint.</span>
           </div>
           @if (error) { <div class="admin-error">{{ error }}</div> }
-          <button class="admin-button primary full" type="submit" [disabled]="sponsorForm.invalid || saving">{{ saving ? 'Cuvanje...' : 'Sacuvaj sponzora' }}</button>
+          <button class="admin-button primary full" type="submit" [disabled]="sponsorForm.invalid || saving">{{ saving ? 'Cuvanje...' : 'Сачувај партнера' }}</button>
         </form>
       </section>
     </section>
@@ -159,6 +161,12 @@ export class SponsorsAdminComponent implements OnInit {
   private readonly api = inject(AdminApiService);
   private readonly fb = inject(FormBuilder);
   private readonly toasts = inject(ToastService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+
+  readonly categoryLabel = sponsorCategoryLabel;
+  get assignableCategories() {
+    return this.categories.filter(category => !isRetiredSponsorCategory(category) || category.id === this.selectedSponsor?.categoryId);
+  }
 
   saving = false;
   sponsorsLoading = true;
@@ -209,7 +217,7 @@ export class SponsorsAdminComponent implements OnInit {
   loadCategories(): void {
     this.categoriesLoading = true;
     this.categoriesError = '';
-    this.api.sponsorCategories({ page: 1, limit: 100 }).pipe(adminLoadGuard()).subscribe({
+    this.api.sponsorCategories({ page: 1, limit: 100 }).pipe(adminLoadGuard(), finalize(() => this.changeDetector.markForCheck())).subscribe({
       next: (response) => {
         this.categories = rowsOf(response);
         this.categoriesLoading = false;
@@ -225,14 +233,14 @@ export class SponsorsAdminComponent implements OnInit {
   loadSponsors(): void {
     this.sponsorsLoading = true;
     this.sponsorsError = '';
-    this.api.sponsors(this.query).pipe(adminLoadGuard()).subscribe({
+    this.api.sponsors(this.query).pipe(adminLoadGuard(), finalize(() => this.changeDetector.markForCheck())).subscribe({
       next: (response) => {
         this.sponsors = rowsOf(response);
         this.total = totalOf(response);
         this.sponsorsLoading = false;
       },
       error: () => {
-        this.sponsorsError = 'Sponzori nisu ucitani.';
+        this.sponsorsError = 'Партнери нису учитани.';
         this.toasts.error(this.sponsorsError);
         this.sponsorsLoading = false;
       }
@@ -240,7 +248,7 @@ export class SponsorsAdminComponent implements OnInit {
   }
 
   loadMedia(): void {
-    this.api.media({ page: 1, limit: 12 }).pipe(adminLoadGuard()).subscribe({
+    this.api.media({ page: 1, limit: 12 }).pipe(adminLoadGuard(), finalize(() => this.changeDetector.markForCheck())).subscribe({
       next: (response) => (this.media = rowsOf(response)),
       error: () => this.toasts.error('Media fajlovi nisu ucitani.')
     });
@@ -253,7 +261,7 @@ export class SponsorsAdminComponent implements OnInit {
 
   editCategory(category: SponsorCategory): void {
     this.selectedCategory = category;
-    this.categoryForm.patchValue(category);
+    this.categoryForm.patchValue({ ...category, name_sr: sponsorCategoryLabel(category, 'sr'), name_en: sponsorCategoryLabel(category, 'en'), name_ru: sponsorCategoryLabel(category, 'ru') });
   }
 
   saveCategory(): void {
@@ -263,7 +271,15 @@ export class SponsorsAdminComponent implements OnInit {
       return;
     }
     this.error = '';
-    this.api.saveSponsorCategory(this.cleanPayload(this.categoryForm.getRawValue()) as Partial<SponsorCategory>, this.selectedCategory?.id).subscribe({
+    const payload = this.cleanPayload(this.categoryForm.getRawValue()) as Partial<SponsorCategory>;
+    // Display aliases must not rename stored categories when unrelated fields are saved.
+    if (this.selectedCategory) {
+      for (const lang of ['sr', 'en', 'ru'] as const) {
+        const field = `name_${lang}` as const;
+        if (payload[field] === sponsorCategoryLabel(this.selectedCategory, lang)) delete payload[field];
+      }
+    }
+    this.api.saveSponsorCategory(payload, this.selectedCategory?.id).subscribe({
       next: () => {
         this.newCategory();
         this.toasts.success('Kategorija je sacuvana.');
@@ -277,7 +293,7 @@ export class SponsorsAdminComponent implements OnInit {
   }
 
   removeCategory(): void {
-    if (!this.selectedCategory || !confirm(`Obrisati kategoriju "${this.selectedCategory.name_sr}"?`)) {
+    if (!this.selectedCategory || !confirm(`Obrisati kategoriju "${this.categoryLabel(this.selectedCategory)}"?`)) {
       return;
     }
     this.api.deleteSponsorCategory(this.selectedCategory.id).subscribe({
@@ -304,7 +320,7 @@ export class SponsorsAdminComponent implements OnInit {
   saveSponsor(): void {
     if (this.sponsorForm.invalid) {
       this.sponsorForm.markAllAsTouched();
-      this.error = 'Naziv sponzora je obavezan, a website mora imati pun URL sa protokolom.';
+      this.error = 'Назив партнера је обавезан, а веб-адреса мора имати пун URL са протоколом.';
       return;
     }
     this.saving = true;
@@ -312,12 +328,12 @@ export class SponsorsAdminComponent implements OnInit {
     this.api.saveSponsor(this.cleanPayload(this.sponsorForm.getRawValue()) as Partial<SponsorItem>, this.selectedSponsor?.id).subscribe({
       next: () => {
         this.saving = false;
-        this.toasts.success('Sponzor je sacuvan.');
+        this.toasts.success('Партнер је сачуван.');
         this.newSponsor();
         this.loadSponsors();
       },
       error: () => {
-        this.error = 'Sponzor nije sacuvan.';
+        this.error = 'Партнер није сачуван.';
         this.toasts.error(this.error);
         this.saving = false;
       }
@@ -325,16 +341,16 @@ export class SponsorsAdminComponent implements OnInit {
   }
 
   removeSponsor(): void {
-    if (!this.selectedSponsor || !confirm(`Obrisati sponzora "${this.selectedSponsor.name}"?`)) {
+    if (!this.selectedSponsor || !confirm(`Обрисати партнера "${this.selectedSponsor.name}"?`)) {
       return;
     }
     this.api.deleteSponsor(this.selectedSponsor.id).subscribe({
       next: () => {
-        this.toasts.success('Sponzor je obrisan.');
+        this.toasts.success('Партнер је обрисан.');
         this.newSponsor();
         this.loadSponsors();
       },
-      error: () => this.toasts.error('Brisanje sponzora nije uspelo.')
+      error: () => this.toasts.error('Брисање партнера није успело.')
     });
   }
 

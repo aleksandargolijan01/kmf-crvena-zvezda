@@ -80,7 +80,7 @@ import { adminLoadGuard, formatDate, rowsOf, totalOf } from '../../shared/admin-
             </div>
             <div class="quick-actions">
               <a routerLink="/admin/players">Igraci</a>
-              <a routerLink="/admin/sponsors">Sponzori</a>
+              <a routerLink="/admin/sponsors">Партнери</a>
               <a routerLink="/admin/newsletter">Newsletter</a>
             </div>
           </section>
@@ -95,7 +95,7 @@ export class DashboardComponent implements OnInit {
   metrics = [
     { label: 'Vesti', value: 0, hint: 'ukupno u CMS-u' },
     { label: 'Igraci', value: 0, hint: 'prvi tim + U19' },
-    { label: 'Sponzori', value: 0, hint: 'aktivni partneri' },
+    { label: 'Партнери', value: 0, hint: 'aktivni partneri' },
     { label: 'Newsletter', value: 0, hint: 'subscribers' }
   ];
   latestNews: NewsItem[] = [];
@@ -123,7 +123,7 @@ export class DashboardComponent implements OnInit {
         this.metrics = [
           { label: 'Vesti', value: totalOf(data.news), hint: 'ukupno u CMS-u' },
           { label: 'Igraci', value: totalOf(data.players) + totalOf(data.u19), hint: 'prvi tim + U19' },
-          { label: 'Sponzori', value: totalOf(data.sponsors), hint: 'aktivni partneri' },
+          { label: 'Партнери', value: totalOf(data.sponsors), hint: 'aktivni partneri' },
           { label: 'Newsletter', value: totalOf(data.newsletter), hint: 'subscribers' }
         ];
         this.latestNews = rowsOf(data.news);

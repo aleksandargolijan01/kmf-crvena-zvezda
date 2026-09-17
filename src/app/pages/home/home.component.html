@@ -23,9 +23,9 @@
     </div>
     <div class="logo-row">
       @if (sponsorsState().loading) {
-        <div class="public-state">Учитавање спонзора...</div>
+        <div class="public-state">{{ i18n.t('partners.loading') }}</div>
       } @else if (sponsorsState().error) {
-        <div class="public-state public-state-error">Спонзори тренутно нису доступни.</div>
+        <div class="public-state public-state-error">{{ i18n.t('partners.error') }}</div>
       } @else {
       @for (sponsor of mainSponsors(); track sponsor.id) {
         <app-sponsor-logo [name]="sponsor.name" [logoUrl]="sponsor.logoUrl" [href]="sponsor.websiteUrl" />

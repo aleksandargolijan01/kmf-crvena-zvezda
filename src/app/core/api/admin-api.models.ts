@@ -149,6 +149,7 @@ export interface StaffAdminItem {
 }
 
 export interface SponsorCategory {
+  slug?: string;
   id: string;
   name_sr: string;
   name_en?: string | null;

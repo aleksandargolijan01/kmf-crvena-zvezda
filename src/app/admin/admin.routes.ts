@@ -74,7 +74,7 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'sponsors',
         loadComponent: () => import('./pages/sponsors/sponsors-admin.component').then((m) => m.SponsorsAdminComponent),
-        title: 'Sponzori | KMF Admin'
+        title: 'Партнери | KMF Admin'
       },
       {
         path: 'sponsor-categories',

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, effect, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { SponsorLogoComponent } from '../../shared/sponsor-logo/sponsor-logo.component';
@@ -6,6 +6,7 @@ import { SponsorInquiryFormComponent } from '../../shared/sponsor-inquiry-form/s
 import { SeoService } from '../../core/seo/seo.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { PublicSponsorCategory, PublicSponsorsService, PublicSponsorsState } from '../../core/api/public-sponsors.service';
+import { sponsorCategoryLabel } from '../../data/sponsor-category-labels';
 
 @Component({
   selector: 'app-friends-page',
@@ -22,10 +23,8 @@ export class FriendsPageComponent implements OnInit {
     private readonly seo: SeoService,
     private readonly publicSponsors: PublicSponsorsService,
     private readonly destroyRef: DestroyRef
-  ) {}
-
-  ngOnInit(): void {
-    this.seo.set({
+  ) {
+    effect(() => this.seo.set({
       title: this.i18n.t('friends.hero.title') + ' | ' + this.i18n.t('brand.name'),
       description: this.i18n.t('friends.hero.text'),
       path: '/prijatelji-kluba',
@@ -37,15 +36,17 @@ export class FriendsPageComponent implements OnInit {
           { name: this.i18n.t('nav.friends'), path: '/prijatelji-kluba' }
         ])
       ]
-    });
+    }));
+  }
 
+  ngOnInit(): void {
     this.publicSponsors.groupedState()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((state) => this.sponsorsState.set(state));
   }
 
   categoryTitle(category: PublicSponsorCategory): string {
-    return this.i18n.text({ sr: category.name_sr, en: category.name_en || category.name_sr, ru: category.name_ru || category.name_sr });
+    return sponsorCategoryLabel(category, this.i18n.currentLanguage());
   }
 
   categoryDescription(category: PublicSponsorCategory): string {

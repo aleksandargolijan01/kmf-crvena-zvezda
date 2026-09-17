@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { catchError, map, of, startWith } from 'rxjs';
 import { PublicApiService } from './public-api.service';
+import { isRetiredSponsorCategory } from '../../data/sponsor-category-labels';
 
 export interface PublicSponsorCategory {
+  slug?: string;
   id: string;
   name_sr: string;
   name_en?: string | null;
@@ -40,7 +42,7 @@ export class PublicSponsorsService {
 
   groupedState() {
     return this.api.sponsors<PublicSponsorCategory[]>().pipe(
-      map((categories) => ({ loading: false, error: false, categories: categories ?? [] })),
+      map((categories) => ({ loading: false, error: false, categories: (categories ?? []).filter(category => !isRetiredSponsorCategory(category) || category.sponsors.length > 0) })),
       catchError(() => of({ loading: false, error: true, categories: [] })),
       startWith({ loading: true, error: false, categories: [] })
     );

@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SponsorInquiriesService } from '../../core/api/sponsor-inquiries.service';
@@ -32,8 +31,8 @@ interface SponsorInquiryCopy {
 
 const sponsorInquiryCopy: Record<LanguageCode, SponsorInquiryCopy> = {
   sr: {
-    eyebrow: 'Спонзорство',
-    title: 'Постаните пријатељ клуба',
+    eyebrow: 'Партнерство',
+    title: 'ПОСТАНИ ПАРТНЕР',
     intro: 'Пошаљите нам кратак упит и јавићемо вам се са предлогом партнерства који најбоље одговара вашој компанији.',
     fullName: 'Име и презиме',
     companyName: 'Назив фирме',
@@ -52,16 +51,16 @@ const sponsorInquiryCopy: Record<LanguageCode, SponsorInquiryCopy> = {
     consentError: 'Морате означити сагласност за слање упита.',
     requiredFields: 'Попуните сва обавезна поља пре слања.',
     packages: [
-      'Златни спонзор',
-      'Сребрни спонзор',
-      'Бронзани спонзор',
-      'Пријатељ клуба',
+      'Главни партнер',
+      'Премијум партнер',
+      'Званични партнер',
+      'Клупски партнери',
       'Нисам сигуран / желим више информација',
     ],
   },
   en: {
-    eyebrow: 'Sponsorship',
-    title: 'Become a friend of the club',
+    eyebrow: 'Partnership',
+    title: 'BECOME A PARTNER',
     intro: 'Send us a short inquiry and we will get back to you with a partnership proposal that best fits your company.',
     fullName: 'Full name',
     companyName: 'Company name',
@@ -80,16 +79,16 @@ const sponsorInquiryCopy: Record<LanguageCode, SponsorInquiryCopy> = {
     consentError: 'You must confirm consent before sending the inquiry.',
     requiredFields: 'Please complete all required fields before sending.',
     packages: [
-      'Gold sponsor',
-      'Silver sponsor',
-      'Bronze sponsor',
-      'Friend of the club',
+      'Main partner',
+      'Premium partner',
+      'Official partner',
+      'Club partners',
       'Not sure / I would like more information',
     ],
   },
   ru: {
-    eyebrow: 'Спонсорство',
-    title: 'Станьте другом клуба',
+    eyebrow: 'Партнёрство',
+    title: 'СТАТЬ ПАРТНЁРОМ',
     intro: 'Отправьте нам короткий запрос, и мы свяжемся с вами с предложением партнерства, которое лучше всего подходит вашей компании.',
     fullName: 'Имя и фамилия',
     companyName: 'Название компании',
@@ -108,10 +107,10 @@ const sponsorInquiryCopy: Record<LanguageCode, SponsorInquiryCopy> = {
     consentError: 'Необходимо подтвердить согласие перед отправкой запроса.',
     requiredFields: 'Заполните все обязательные поля перед отправкой.',
     packages: [
-      'Золотой спонсор',
-      'Серебряный спонсор',
-      'Бронзовый спонсор',
-      'Друг клуба',
+      'Главный партнёр',
+      'Премиум-партнёр',
+      'Официальный партнёр',
+      'Клубные партнёры',
       'Не уверен / хочу больше информации',
     ],
   },
@@ -231,7 +230,11 @@ export class SponsorInquiryFormComponent {
   readonly packageOptions = computed(() => this.copy().packages);
   readonly packageDropdownOpen = signal(false);
   readonly activePackageIndex = signal(0);
-  readonly selectedPackageLabel = computed(() => this.form.controls.sponsorshipPackage.value || this.copy().packagePlaceholder);
+  readonly selectedPackageLabel = () => {
+    const value = this.form.controls.sponsorshipPackage.value;
+    const source = Object.values(sponsorInquiryCopy).find(copy => copy.packages.includes(value));
+    return source ? this.copy().packages[source.packages.indexOf(value)] : value || this.copy().packagePlaceholder;
+  };
 
   private readonly packageInstanceId = Math.random().toString(36).slice(2);
   readonly packageLabelId = `sponsor-package-label-${this.packageInstanceId}`;
@@ -395,7 +398,7 @@ export class SponsorInquiryFormComponent {
         this.submitted.set(false);
         this.form.reset();
       },
-      error: (_error: HttpErrorResponse) => {
+      error: () => {
         this.state.set('error');
       },
     });
