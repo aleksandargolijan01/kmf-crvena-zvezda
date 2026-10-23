@@ -117,7 +117,7 @@ h3 {
 
 .site-header,
 .section,
-.top-sponsors,
+.club-partners,
 .stats,
 .sponsor-marquee,
 .site-footer,
@@ -783,7 +783,7 @@ h3 {
   background: var(--red);
 }
 
-.top-sponsors {
+.club-partners {
   display: grid;
   grid-template-columns: 230px 1fr;
   gap: 28px;
@@ -2837,7 +2837,7 @@ app-news-card {
     opacity: 0.5;
   }
 
-  .top-sponsors,
+  .club-partners,
   .split,
   .page-hero,
   .package-block,
@@ -3018,7 +3018,7 @@ app-news-card {
 @media (max-width: 480px) {
   .site-header,
   .section,
-  .top-sponsors,
+  .club-partners,
   .stats,
   .sponsor-marquee,
   .site-footer,
@@ -3115,7 +3115,7 @@ app-news-card {
     font-size: 12px;
   }
 
-  .top-sponsors {
+  .club-partners {
     gap: 18px;
   }
 
@@ -3285,7 +3285,7 @@ app-news-card {
 @media (max-width: 360px) {
   .site-header,
   .section,
-  .top-sponsors,
+  .club-partners,
   .stats,
   .sponsor-marquee,
   .site-footer,

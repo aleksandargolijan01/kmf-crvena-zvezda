@@ -13,6 +13,8 @@ const html = await readFile(path.join(output, 'index.html'), 'utf8');
 assert.match(html, /September 16/, 'Build with homepage-freshness.fixture-loader.mjs first.');
 assert.equal((html.match(/<app-sponsor-logo/g) ?? []).length, 3);
 assert.match(html, /id="ng-state"/);
+assert.match(html, /class="club-partners"/);
+assert.doesNotMatch(html, /top-sponsors/);
 assert.match(html, /rel="canonical"/);
 assert.match(html, /application\/ld\+json/);
 const mime = { '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
@@ -84,19 +86,26 @@ try {
           const requested = Promise.all(['/news', '/sponsors/grouped'].map(p => f.page.waitForRequest(r => new URL(r.url()).pathname === p)));
           await f.page.goto(base + '/');
           await requested;
-          assert.equal(await f.page.locator('.top-sponsors app-sponsor-logo').count(), 3);
+          // Model the suspected cosmetic selector, not any particular extension's behavior.
+          await f.page.addStyleTag({ content: '.top-sponsors { display: none !important; }' });
+          assert.equal(await f.page.locator('.top-sponsors').count(), 0);
+          assert.equal(await f.page.locator('.club-partners').evaluate(section => {
+            const rect = section.getBoundingClientRect();
+            return getComputedStyle(section).display === 'grid' && rect.width > 0 && rect.height > 0;
+          }), true);
+          assert.equal(await f.page.locator('.club-partners app-sponsor-logo').count(), 3);
           assert.match(await f.page.locator('.compact-news-list').textContent(), /September 16/);
           const title = await f.page.title(), canonical = await f.page.locator('link[rel="canonical"]').getAttribute('href');
           f.apiGate.release();
-          await f.page.waitForFunction(() => document.querySelectorAll('.top-sponsors app-sponsor-logo').length === 5);
+          await f.page.waitForFunction(() => document.querySelectorAll('.club-partners app-sponsor-logo').length === 5);
           await f.page.waitForFunction(() => document.querySelector('.compact-news-list')?.textContent.includes('October 23'));
-          await f.page.locator('.top-sponsors').scrollIntoViewIfNeeded();
+          await f.page.locator('.club-partners').scrollIntoViewIfNeeded();
           // Pending loads are not incorrectly replaced by the name fallback.
-          assert.equal(await f.page.locator('.top-sponsors img').count(), 5);
+          assert.equal(await f.page.locator('.club-partners img').count(), 5);
           // Firefox may retain the previous decoded image while a changed src is pending.
-          await f.page.waitForFunction(() => [...document.querySelectorAll('.top-sponsors img')].every(i => !i.complete));
+          await f.page.waitForFunction(() => [...document.querySelectorAll('.club-partners img')].every(i => !i.complete));
           f.imageGate.release();
-          await decoded(f.page, '.top-sponsors img', 5);
+          await decoded(f.page, '.club-partners img', 5);
           assert.deepEqual(await f.page.locator('.compact-news-list h3').allTextContents(), ['October 23', 'October 22', 'October 21']);
           assert.equal(f.state.calls.filter(p => p.startsWith('/news?')).length, 1);
           assert.equal(f.state.calls.filter(p => p === '/sponsors/grouped').length, 1);
@@ -116,8 +125,8 @@ try {
           await decoded(f.page, '.sponsor-packages img', 4);
           // Return to home using its real router link, keeping service instances alive.
           await f.page.locator('app-footer a[href="/"]').first().click();
-          await decoded(f.page, '.top-sponsors img', 4);
-          assert.ok((await f.page.locator('.top-sponsors img').first().getAttribute('src')).includes('updated-0'));
+          await decoded(f.page, '.club-partners img', 4);
+          assert.ok((await f.page.locator('.club-partners img').first().getAttribute('src')).includes('updated-0'));
           assert.deepEqual(f.state.errors, []);
           console.log(`PASS ${name} ${width}px: stale SSR -> fresh latest news / 5 partners, slow image decode, SPA updates/removal, SEO/layout/lazy images.`);
         } finally { f.apiGate.release(); f.scriptGate.release(); f.imageGate.release(); await f.context.close(); }
@@ -127,12 +136,12 @@ try {
       const early = await fixture(browser, 390, { earlyFailure: true });
       try {
         await early.page.goto(base + '/', { waitUntil: 'commit' });
-        await early.page.locator('.top-sponsors').scrollIntoViewIfNeeded();
-        await early.page.waitForFunction(() => [...document.querySelectorAll('.top-sponsors img')].length === 3 && [...document.querySelectorAll('.top-sponsors img')].every(i => i.complete && i.naturalWidth === 0));
+        await early.page.locator('.club-partners').scrollIntoViewIfNeeded();
+        await early.page.waitForFunction(() => [...document.querySelectorAll('.club-partners img')].length === 3 && [...document.querySelectorAll('.club-partners img')].every(i => i.complete && i.naturalWidth === 0));
         early.scriptGate.release();
-        await early.page.waitForFunction(() => document.querySelectorAll('.top-sponsors .sponsor-logo span').length === 3);
+        await early.page.waitForFunction(() => document.querySelectorAll('.club-partners .sponsor-logo span').length === 3);
         early.apiGate.release(); early.imageGate.release();
-        await decoded(early.page, '.top-sponsors img', 5);
+        await decoded(early.page, '.club-partners img', 5);
         assert.deepEqual(early.state.errors, []);
         console.log(`PASS ${name}: pre-hydration image errors show partner names; changed URLs recover on the same partner IDs.`);
       } finally { early.apiGate.release(); early.scriptGate.release(); early.imageGate.release(); await early.context.close(); }
@@ -141,10 +150,10 @@ try {
       try {
         broken.apiGate.release(); broken.imageGate.release();
         await broken.page.goto(base + '/');
-        await broken.page.waitForFunction(() => document.querySelectorAll('.top-sponsors .sponsor-logo span').length === 1);
-        await decoded(broken.page, '.top-sponsors img', 4);
-        assert.equal(await broken.page.locator('.top-sponsors app-sponsor-logo').count(), 5);
-        assert.equal(await broken.page.locator('.top-sponsors .sponsor-logo span').textContent(), 'Partner 0');
+        await broken.page.waitForFunction(() => document.querySelectorAll('.club-partners .sponsor-logo span').length === 1);
+        await decoded(broken.page, '.club-partners img', 4);
+        assert.equal(await broken.page.locator('.club-partners app-sponsor-logo').count(), 5);
+        assert.equal(await broken.page.locator('.club-partners .sponsor-logo span').textContent(), 'Partner 0');
         assert.deepEqual(broken.state.errors, []);
         console.log(`PASS ${name}: a failed current logo keeps the partner/link visible by name without retry loops.`);
       } finally { broken.apiGate.release(); broken.imageGate.release(); await broken.context.close(); }
@@ -156,9 +165,9 @@ try {
           f.apiGate.release(); f.imageGate.release();
           await f.page.goto(base + '/'); await responses;
           if (scenario.empty) {
-            await f.page.waitForFunction(() => document.querySelectorAll('.top-sponsors app-sponsor-logo').length === 0 && document.querySelectorAll('.compact-news-list article').length === 0);
+            await f.page.waitForFunction(() => document.querySelectorAll('.club-partners app-sponsor-logo').length === 0 && document.querySelectorAll('.compact-news-list article').length === 0);
           } else {
-            await decoded(f.page, '.top-sponsors img', 3);
+            await decoded(f.page, '.club-partners img', 3);
             assert.match(await f.page.locator('.compact-news-list').textContent(), /September 16/);
           }
           assert.deepEqual(f.state.errors, []);
@@ -180,7 +189,7 @@ try {
       const noJs = await browser.newContext({ javaScriptEnabled: false });
       try {
         const page = await noJs.newPage(); await page.goto(base + '/');
-        assert.equal(await page.locator('.top-sponsors app-sponsor-logo').count(), 3);
+        assert.equal(await page.locator('.club-partners app-sponsor-logo').count(), 3);
         assert.match(await page.locator('.compact-news-list').textContent(), /September 16/);
         assert.ok(await page.locator('meta[name="description"]').getAttribute('content'));
         console.log(`PASS ${name}: no-JavaScript prerendered content and metadata retained.`);

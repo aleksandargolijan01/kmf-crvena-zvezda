@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import '@angular/compiler';
 import { lastValueFrom, of, Subject, throwError, toArray } from 'rxjs';
 import { moduleUrl } from './typescript-test-loader.mjs';
@@ -9,6 +10,16 @@ const { PublicApiService } = await load('core/api/public-api.service.ts');
 const { PublicNewsService } = await load('core/api/public-news.service.ts');
 const { PublicSponsorsService } = await load('core/api/public-sponsors.service.ts');
 const { HomeComponent } = await load('pages/home/home.component.ts');
+
+test('homepage partner section uses the neutral class and retains its accessible heading', async () => {
+  const template = await readFile(new URL('../src/app/pages/home/home.component.html', import.meta.url), 'utf8');
+  const styles = await readFile(new URL('../src/styles.scss', import.meta.url), 'utf8');
+  assert.match(template, /<section class="club-partners" aria-labelledby="sponsors-title">/);
+  assert.match(template, /<h2 id="sponsors-title">/);
+  assert.match(styles, /\.club-partners\s*\{/);
+  assert.doesNotMatch(template, /top-sponsors/);
+  assert.doesNotMatch(styles, /top-sponsors/);
+});
 
 function setup(responses, platform = 'browser') {
   let stable;

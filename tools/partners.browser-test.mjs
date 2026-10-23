@@ -76,7 +76,7 @@ try {
     for (const lang of ['sr', 'en', 'ru']) {
       await language(lang);
       assert.equal((await page.locator('#sponsors-title').textContent()).trim(), translations[lang]['home.sponsors.title']);
-      assert.equal(await page.locator('.top-sponsors .sponsor-logo').count(), 4);
+      assert.equal(await page.locator('.club-partners .sponsor-logo').count(), 4);
       assert.equal((await page.locator('app-footer a[href="/prijatelji-kluba"]').first().textContent()).trim(), translations[lang]['nav.friends']);
       assert.equal((await page.locator('.site-nav a[href="/prijatelji-kluba"]').textContent()).trim(), translations[lang]['nav.friends']);
     }
