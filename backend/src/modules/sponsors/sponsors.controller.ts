@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
 import { SponsorsService } from './sponsors.service';
 
 @Controller('sponsors')
@@ -16,6 +16,7 @@ export class SponsorsController {
   }
 
   @Get('grouped')
+  @Header('Cache-Control', 'public, max-age=0, must-revalidate')
   findGrouped() {
     return this.sponsorsService.findPublicGrouped();
   }

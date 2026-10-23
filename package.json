@@ -9,7 +9,9 @@
     "build:production": "npm run build",
     "watch": "ng build --watch --configuration development",
     "generate:sitemap": "node tools/generate-sitemap.mjs",
-    "test:seo": "node --test tools/static-news-seo.test.mjs tools/static-shop-seo.test.mjs"
+    "test:seo": "node --test tools/static-news-seo.test.mjs tools/static-shop-seo.test.mjs",
+    "test:homepage": "node --test tools/homepage-freshness.test.mjs",
+    "test:homepage:browser": "node tools/homepage-freshness.browser-test.mjs"
   },
   "dependencies": {
     "@angular/common": "^21.2.17",

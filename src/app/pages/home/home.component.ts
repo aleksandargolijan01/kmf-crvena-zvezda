@@ -2,7 +2,6 @@ import { Component, DestroyRef, OnInit, computed, signal } from '@angular/core';
 import { ShopCarouselComponent } from '../../shared/shop/shop-carousel.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { combineLatest, map } from 'rxjs';
 import { clubStats } from '../../data/club-stats.data';
 import { galleryImages } from '../../data/gallery.data';
 import { SponsorLogoComponent } from '../../shared/sponsor-logo/sponsor-logo.component';
@@ -73,24 +72,8 @@ export class HomeComponent implements OnInit {
       ]
     });
 
-    combineLatest([
-      this.publicNews.listState(1, 3, { featured: true }),
-      this.publicNews.listState(1, 3)
-    ]).pipe(
-      map(([featured, latest]) => {
-        const featuredItems = featured.items;
-        const latestFill = latest.items.filter((item) => !featuredItems.some((featuredItem) => featuredItem.id === item.id));
-        const items = [...featuredItems, ...latestFill].slice(0, 3);
-
-        return {
-          loading: featured.loading || latest.loading,
-          error: featured.error && latest.error,
-          items,
-          total: Math.max(featured.total, latest.total, items.length)
-        };
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    )
+    this.publicNews.listState(1, 3)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((state) => this.newsState.set(state));
 
     this.publicSponsorsService.groupedState()
